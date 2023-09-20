@@ -1,1 +1,98 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/wtw9xmrw)
+# Shell
+
+[Description]
+
+## Group Members
+- **John Doe**: jd19@fsu.edu
+- **Jane Smith**: js19@fsu.edu
+- **Alex Brown**: ab19@fsu.edu
+## Division of Labor
+
+### Part 1: Prompt
+- **Responsibilities**: [Description]
+- **Assigned to**: John Doe
+
+### Part 2: Environment Variables
+- **Responsibilities**: [Description]
+- **Assigned to**: Jane Smith
+
+### Part 3: Tilde Expansion
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown
+
+### Part 4: $PATH Search
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown, Jane Smith
+
+### Part 5: External Command Execution
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown, Jane Smith
+
+### Part 6: I/O Redirection
+- **Responsibilities**: [Description]
+- **Assigned to**: Jane Smith
+
+### Part 7: Piping
+- **Responsibilities**: [Description]
+- **Assigned to**: John Doe
+
+### Part 8: Background Processing
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown, John Doe
+
+### Part 9: Internal Command Execution
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown
+
+### Part 10: External Timeout Executable
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown, Jane Smith
+
+### Extra Credit
+- **Responsibilities**: [Description]
+- **Assigned to**: Alex Brown
+
+## File Listing
+```
+shell/
+│
+├── src/
+│ ├── main.c
+│ └── shell.c
+│
+├── include/
+│ └── shell.h
+│
+├── README.md
+└── Makefile
+```
+## How to Compile & Execute
+
+### Requirements
+- **Compiler**: e.g., `gcc` for C/C++, `rustc` for Rust.
+- **Dependencies**: List any libraries or frameworks necessary (rust only).
+
+### Compilation
+For a C/C++ example:
+```bash
+make
+```
+This will build the executable in ...
+### Execution
+```bash
+make run
+```
+This will run the program ...
+
+## Bugs
+- **Bug 1**: This is bug 1.
+- **Bug 2**: This is bug 2.
+- **Bug 3**: This is bug 3.
+
+## Extra Credit
+- **Extra Credit 1**: [Extra Credit Option]
+- **Extra Credit 2**: [Extra Credit Option]
+- **Extra Credit 3**: [Extra Credit Option]
+
+## Considerations
+[Description]
