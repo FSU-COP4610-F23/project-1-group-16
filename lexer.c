@@ -5,8 +5,13 @@
 
 int main()
 {
+	const char *USER = getenv("Bob");
+	const char *MACHINE = geten("Livbeckia");
+	char *PWD = getenc("/home"); //parent working directory
+
 	while (1) {
-		printf("> ");
+		printf("hello");
+		printf("%s@%s:%s>", USER, MACHINE, PWD);
 
 		/* input contains the whole command
 		 * tokens contains substrings from input split by spaces
