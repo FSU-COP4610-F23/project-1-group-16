@@ -5,26 +5,27 @@
 
 int main()
 {
-	const char *USER = getenv("Bob");
-	const char *MACHINE = getenv("Livbeckia");
-	char *PWD = getenv("/home"); //parent working directory
+	// char *user = getenv("USER");
+	// char *machine = getenv("MACHINE");
+	// char *pwd = getenv("PWD"); //parent working directory
 
 	while (1) {
-		printf("hello");
-		printf("%s@%s:%s>", USER, MACHINE, PWD);
-		// printf("> ");
+		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
 		/* input contains the whole command
 		 * tokens contains substrings from input split by spaces
 		 */
 
 		char *input = get_input();
-		printf("whole input: %s\n", input);
+		printf("whole input: %s\n", input); //will be deleted later
 
 		tokenlist *tokens = get_tokens(input);
 		for (int i = 0; i < tokens->size; i++) {
-			printf("token %d: (%s)\n", i, tokens->items[i]);
+			printf("token %d: (%s)\n", i, tokens->items[i]); //this line is for testing and should be deleted later
 		}
+
+		//this is where we take the tokens and do what we need to do with them 
+		doCode(tokens);
 
 		free(input);
 		free_tokens(tokens);
@@ -94,4 +95,17 @@ void free_tokens(tokenlist *tokens) {
 		free(tokens->items[i]);
 	free(tokens->items);
 	free(tokens);
+}
+
+void doCode(tokenlist *tokens){
+	printf("inside doCode\n");
+	//get first token
+	char *first = tokens->items[0];
+	char *second = tokens->items[1];
+	getc(second[0]);
+	printf("second is now%s\n", second);
+	// printf("%s, %s\n", first, second);
+	if(!(strcmp(first, "echo"))){
+		printf("%s\n\n", getenv(second));
+	}
 }
