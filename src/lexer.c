@@ -83,6 +83,22 @@ tokenlist *get_tokens(char *input) {
 	char *tok = strtok(buf, " ");
 	while (tok != NULL)
 	{
+		printf("token help\n");
+		//if ~ then make it not 
+		if(tok[0] == '~'){
+			char* replace = tok; //get the token that has ~
+			printf("line 97\n");
+			replace++; //get rid of ~
+			printf("line 99\n");
+			char* adding = "$HOME";
+			printf("line 101\n");
+			char expanded[strlen(adding) + strlen(tok)];
+			printf("line 104\n");
+			sprintf(expanded, "%s%s", adding, tok+1);
+			printf("line 106\n");
+			strcpy(tok, expanded);
+			printf("line 108\ntok is %s\n", tok);
+		}
 		add_token(tokens, tok);
 		tok = strtok(NULL, " ");
 	}
@@ -98,14 +114,21 @@ void free_tokens(tokenlist *tokens) {
 }
 
 void doCode(tokenlist *tokens){
-	printf("inside doCode\n");
 	//get first token
-	char *first = tokens->items[0];
-	char *second = tokens->items[1];
-	getc(second[0]);
-	printf("second is now%s\n", second);
-	// printf("%s, %s\n", first, second);
+	char *first = tokens->items[0]; //grab first
+	//echo
 	if(!(strcmp(first, "echo"))){
-		printf("%s\n\n", getenv(second));
+		char *second = tokens->items[1]; //grab second
+		char* sec = second;
+		sec++;
+		if(getenv(sec) != NULL){
+			printf("%s\n", getenv(sec)); //prints the echo
+		}
+		
 	}
+	// //ls
+	// else if(){
+
+	// }
+
 }
