@@ -98,22 +98,39 @@ void free_tokens(tokenlist *tokens) {
 }
 
 void doCode(tokenlist *tokens){
+	if(tokens->size == 0){ //if no input, move on and ask for input again 
+		return;
+	}
 	//get first token
 	char *first = tokens->items[0]; //grab first
 	tilde(first);
 	//echo
 	if(!(strcmp(first, "echo"))){
-		char *second = tokens->items[1]; //grab second
-		char* sec = second;
-		sec++;
-		if(getenv(sec) != NULL){
-			printf("%s\n", getenv(sec)); //prints the echo
+		if(tokens->size == 1){ //nothing after echo so just return empty line
+			printf("\n");
 		}
-		
-	}
+		else {
+			int i = 1;
+			while(tokens->items[i] != NULL){
+				char *next = tokens->items[i]; //grab second
+				if(next[0] == '$'){ //if echoing an environment variable
+					char* sec = next;
+					sec++; //remove $
+					if(getenv(sec) != NULL){
+						printf("%s ", getenv(sec)); //prints the echo
+					}
+				}
+				else{
+					printf("%s ", next); //echo without $ just echos the user 
+				}
+				i++;
+			}
+			printf("\n"); //end of echoing
+		}
+	} //end of echo
 	//ls
-	else if(!(strcmp(first, "ls"))){{
-		//
+	else if(!(strcmp(first, "ls"))){
+		//get directory by env and then get entities 
 	}
 
 }
