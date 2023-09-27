@@ -119,7 +119,7 @@ void doCode(tokenlist *tokens){
 		else {
 			int i = 1;
 			while(tokens->items[i] != NULL){
-				char *next = tokens->items[i]; //grab second
+				char *next = tokens->items[i]; //grab next
 				if(next[0] == '$'){ //if echoing an environment variable
 					char* sec = next;
 					sec++; //remove $
@@ -130,7 +130,7 @@ void doCode(tokenlist *tokens){
 				else{
 					printf("%s ", next); //echo without $ just echos the user 
 				}
-				i++;
+				i++; //go to next word to echo 
 			}
 			printf("\n"); //end of echoing
 		}
@@ -138,6 +138,12 @@ void doCode(tokenlist *tokens){
 	//ls
 	else if(!(strcmp(first, "ls"))){
 		//get directory by env and then get entities 
+	}
+	else if(!(strcmp(first, "cd"))){
+		if(tokens->size == 1){ //nothing after cd so make PWD, HOME
+			setenv("PWD", getenv("$HOME"), 1); //1 means if PWD exists, it is updated
+			printf("done\n");
+		}
 	}
 
 }
