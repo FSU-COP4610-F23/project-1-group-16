@@ -27,6 +27,13 @@ int main()
 		//this is where we take the tokens and do what we need to do with them 
 		doCode(tokens);
 
+		//tilde testing
+		/*
+		char* token = strtok(tokens, " ");
+		char* tok = tilde(token);
+		printf("%s ", tok);
+		*/
+
 		free(input);
 		free_tokens(tokens);
 	}
@@ -135,6 +142,25 @@ void doCode(tokenlist *tokens){
 
 }
 
+/*
+//would work for "cd ~/dir1", will not work for moving to previous directory
+char* tilde(const char* token)
+{
+	if(token[0] == '~')
+	{
+		if(token[1] == '/' || strlen(token) == 1) //if it is standalone or with '/'
+		{
+			const char* directory = getenv("HOME");
+			char* tok = strlen(directory) + strlen(token) + 1;	//tok is the expanded home path, aka expanded token
+			strcpy(tok, directory);		
+			strcat(tok, token + 1);		//adding dir1 for example
+			return tok;
+		}
+	}
+	return token;	//if token isn't a tilde
+}
+*/
+
 void tilde(char *token){
 	if(token[0] == '~'){
 			char* replace = token; //get the token that has ~
@@ -151,6 +177,7 @@ void tilde(char *token){
 			printf("line 108\ntok is %s\n", token);
 		}
 }
+
 
 /*
 printf("token help\n");
