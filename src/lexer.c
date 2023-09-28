@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+//NOT ALLOWED TO ADD ANYMORE #INCLUDE
 
 int main()
 {
@@ -137,13 +138,44 @@ void doCode(tokenlist *tokens){
 	} //end of echo
 	//ls
 	else if(!(strcmp(first, "ls"))){
-		//get directory by env and then get entities 
+		//**The following code does not work but it does delimit $PATH correctly
+		// //get directory by env and then get entities 
+		// if(tokens->size == 1){ //nothing after ls
+		// 	printf("Inside ls \n");
+		// 	//I think we need to use strtok() for this
+		// 	// char * path = getenv("PATH");
+		// 	char * list = strtok(getenv("PATH"), ":");
+		// 	while(list != NULL){
+		// 		printf("%s ", list);
+		// 		list = strtok(NULL, ":");
+		// 	}
+		// }
+		// printf("done ls code\n");
 	}
-	else if(!(strcmp(first, "cd"))){
-		if(tokens->size == 1){ //nothing after cd so make PWD, HOME
+	else if((strcmp(first, "cd")) == 0){
+		if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //nothing after cd, or ~ after, so make PWD, HOME
 			setenv("PWD", getenv("$HOME"), 1); //1 means if PWD exists, it is updated
 			printf("done\n");
 		}
+		else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
+			char current_directory[4096]; //buffer to store the current directory
+			if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
+				char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
+				//might want to change above function to strtok() because that is what he uses in the shell PP
+				if (last_slash != NULL) { //need to have found a "/"
+					*last_slash = '\0'; //null-terminate the string at the last slash
+					setenv("PWD", current_directory, 1); //change directory
+					chdir(current_directory);
+					printf("Simulating a change to the parent directory: %s\n", current_directory);
+				} else {
+					printf("Already at the root directory; cannot go up.\n");
+				}
+			} 
+			else {
+				perror("Error");
+			}
+		}
+		//need to add if cd into folder into folder 
 	}
 
 }
