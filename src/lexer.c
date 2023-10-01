@@ -1,18 +1,23 @@
+/*
+Questions for TA:
+how do we move forward in a directory with cd and ls
+cd dir
+cd ./dir
+cd ~/dir
+make file 
+*/
+
+
 #include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//NOT ALLOWED TO ADD ANYMORE #INCLUDE
-// #include <unistd.h> //can we include this? 
+#include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
 
 int main()
 {
-	// char *user = getenv("USER");
-	// char *machine = getenv("MACHINE");
-	// char *pwd = getenv("PWD"); //print working directory
-
 	while (1) {
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
@@ -30,13 +35,6 @@ int main()
 
 		//this is where we take the tokens and do what we need to do with them 
 		doCode(tokens);
-
-		//tilde testing
-		/*
-		char* token = strtok(tokens, " ");
-		char* tok = tilde(token);
-		printf("%s ", tok);
-		*/
 
 		free(input);
 		free_tokens(tokens);
@@ -141,32 +139,24 @@ void doCode(tokenlist *tokens){
 	} //end of echo
 	//ls
 	else if((strcmp(first, "ls")) == 0){
-		// //**The following code does not work but it does delimit $PATH correctly
-		// //get directory by env and then get entities 
-		// if(tokens->size == 1){ //nothing after ls
-		// 	printf("Inside ls \n");
-		// 	//I think we need to use strtok() for this
-		// 	// char * path = getenv("PATH");
-		// 	char * list = strtok(getenv("$PATH"), ":");
-		// 	while(list != NULL){
-		// 		printf("Inside while\n");
-		// 		printf("%s ", list);
-		// 		list = strtok(NULL, ":");
-		// 	}
-		// }
-		// printf("done ls code\n");
-		char * cmd[] = {"ls",  NULL};
+		char *cmd[] = {"ls", NULL};
 		int pid = fork();
-		if(pid == 0){
-			printf("before\n");
-			execv("ls", cmd);
-			printf("After\n");
+		if (pid == 0) {
+			if (execv("/bin/ls", cmd) == -1) {
+				perror("execv");
+				exit(1);
+			}
+		} else if (pid > 0) {
+			waitpid(pid, NULL, 0);
+		} else {
+			perror("fork");
+			exit(1);
 		}
 	}
 	else if((strcmp(first, "cd")) == 0){
 		if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //nothing after cd, or ~ after, so make PWD, HOME
-			setenv("PWD", getenv("$HOME"), 1); //1 means if PWD exists, it is updated
-			chdir(getenv("$HOME"));
+			setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
+			chdir(getenv("HOME"));
 			printf("done\n");
 		}
 		else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
@@ -210,25 +200,6 @@ void doCode(tokenlist *tokens){
 
 }
 
-/*
-//would work for "cd ~/dir1", will not work for moving to previous directory
-char* tilde(const char* token)
-{
-	if(token[0] == '~')
-	{
-		if(token[1] == '/' || strlen(token) == 1) //if it is standalone or with '/'
-		{
-			const char* directory = getenv("HOME");
-			char* tok = strlen(directory) + strlen(token) + 1;	//tok is the expanded home path, aka expanded token
-			strcpy(tok, directory);		
-			strcat(tok, token + 1);		//adding dir1 for example
-			return tok;
-		}
-	}
-	return token;	//if token isn't a tilde
-}
-*/
-
 void tilde(char *token){
 	if(token[0] == '~'){
 			char* replace = token; //get the token that has ~
@@ -240,23 +211,3 @@ void tilde(char *token){
 			printf("tok is %s\n", token);
 		}
 }
-
-
-/*
-printf("token help\n");
-		//if ~ then make it not 
-		if(tok[0] == '~'){
-			char* replace = tok; //get the token that has ~
-			printf("line 97\n");
-			replace++; //get rid of ~
-			printf("line 99\n");
-			char* adding = "$HOME";
-			printf("line 101\n");
-			char expanded[strlen(adding) + strlen(tok)];
-			printf("line 104\n");
-			sprintf(expanded, "%s%s", adding, tok+1);
-			printf("line 106\n");
-			strcpy(tok, expanded);
-			printf("line 108\ntok is %s\n", tok);
-		}
-*/
