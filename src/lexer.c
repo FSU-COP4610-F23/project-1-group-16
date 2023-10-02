@@ -153,49 +153,59 @@ void doCode(tokenlist *tokens){
 			exit(1);
 		}
 	}
+	// cd
 	else if((strcmp(first, "cd")) == 0){
-		if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //nothing after cd, or ~ after, so make PWD, HOME
-			setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
-			chdir(getenv("HOME"));
-			printf("done\n");
+		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //just cd, or ~ after, so make PWD, HOME
+		// 	// setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
+		// 	chdir(getenv("HOME"));
+		// 	printf("done\n");
+		// }
+
+		char *second = tokens->items[1]; // this is what is after cd 
+		printf("this is second %s", second);
+		if(chdir(second) != 0)
+		{
+			perror("chdir() to token after cd failed");
 		}
-		else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
-			char current_directory[4096]; //buffer to store the current directory
-			if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
-				char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
-				//might want to change above function to strtok() because that is what he uses in the shell PP
-				if (last_slash != NULL) { //need to have found a "/"
-					*last_slash = '\0'; //null-terminate the string at the last slash
-					setenv("PWD", current_directory, 1); //change print working directory
-					chdir(current_directory);
-				} else {
-					printf("Already at the root directory; cannot go up.\n");
-				}
-			} 
-			else {
-				perror("Error");
-			}
-		}
-		//need to add if cd into folder into folder 
-		else if (strcmp(tokens->items[1], "./bin") == 0){ //if cd ~
-			//cd ~(something after)
-			//check if file directory exists before going into it 
-			// . is current directory
-			// ~ is home directory
-			printf("got in cd .\n");
-			DIR* dir = opendir("bin");
-			printf("got here\n");
-			if (dir) {
-				/* Directory exists. */
-				setenv("PWD", tokens->items[1], 1); //change print working directory
-				chdir(tokens->items[1]);
-				closedir(dir);
-			} else if (ENOENT == errno) {
-				/* Directory does not exist. */
-			} else {
-				/* opendir() failed for some other reason. */
-			}
-		}
+		
+		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
+		// 	char current_directory[4096]; //buffer to store the current directory
+		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
+		// 		char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
+		// 		//might want to change above function to strtok() because that is what he uses in the shell PP
+		// 		if (last_slash != NULL) { //need to have found a "/"
+		// 			*last_slash = '\0'; //null-terminate the string at the last slash
+		// 			setenv("PWD", current_directory, 1); //change print working directory
+		// 			chdir(current_directory);
+		// 		} else {
+		// 			printf("Already at the root directory; cannot go up.\n");
+		// 		}
+		// 	} 
+		// 	else {
+		// 		perror("Error");
+		// 	}
+		// }
+		// //need to add if cd into folder into folder 
+		// else if (strcmp(tokens->items[1], "./bin") == 0){ //if cd ~
+		// 	//cd ~(something after)
+		// 	//check if file directory exists before going into it 
+		// 	// . is current directory
+		// 	// ~ is home directory
+		// 	printf("got in cd .\n");
+		// 	// DIR* dir = opendir("bin"); // DIR is a directory stream
+		// 	printf("got here\n");
+		// 	//if (dir) {
+		// 		/* Directory exists. */
+		// 		//setenv("PWD", tokens->items[1], 1); //change print working directory
+		// 		chdir(tokens->items[1]);
+		// 		//closedir(dir);
+		// 	// } else if (ENOENT == errno) {
+		// 	// 	/* Directory does not exist. */
+		// 	// } else {
+		// 	// 	/* opendir() failed for some other reason. */
+		// 	// }
+
+		// }
 	}
 
 }
