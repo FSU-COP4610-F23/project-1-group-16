@@ -1,8 +1,7 @@
 /*
 Questions for TA:
-how do we move forward in a directory with cd and ls
 make file 
-can we treat echo as internal
+are we allowed to use setenv
 */
 
 
@@ -13,10 +12,17 @@ can we treat echo as internal
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+
 
 int main()
 {
-	while (1) {
+	char commandHistory[3][200];
+	int numValid = 0;
+	bool running = true;
+	while (running) {
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
 		/* input contains the whole command
@@ -33,23 +39,36 @@ int main()
 
 		//do tilde here
 		// tilde(tokens);
-		for(int i = 0; i < tokens->size; i++){
-			tilde(tokens->items[i]);
-		}
+		// for(int i = 0; i < tokens->size; i++){
+		// 	// tilde(tokens->items[i]);
+		// 	char * help = tilde(tokens->items[i]);
+		// 	// tokens->items[i] = tilde(tokens->items[i]);
+		// 	printf("help is now %s\n", help);
+		// 	// free(help);
+		// }
+		tilde(tokens);
+		printf("got to line 43\n");
 		//this is where we take the tokens and do what we need to do with them 
 		// doCode(tokens);
 		//if no entry
 		if(tokens->size == 0){ //if no input, move on and ask for input again 
-			return; //print a line
+			printf("\n"); //print a line
 		}
 		//if internal command
-		else if(isInternal(tokens->items[0])){
+		else if(isInternal(tokens, running)){
 			//internal command(tokens)
-			handleInternal(tokens);
+			//add command to external command (need a function here) *******HERE******************************************************************
+			if(numValid<3){
+				numValid++;
+			}
 		}
 		else{
 			//external command(tokens)
-			handleExternal(tokens);
+			handleExternal(tokens); //this needs to return bool
+			//add command to external command (need a function here) *******HERE******************************************************************
+			if(numValid<3){
+				numValid++;
+			}
 		}
 
 		free(input);
@@ -59,33 +78,38 @@ int main()
 	return 0;
 }
 
-bool isInternal(char* token){
-	if((strcmp(token, "echo") == 0) || 
-		(strcmp(token, "cd") == 0) || 
-		(strcmp(token, "exit") == 0) ||
-		(strcmp(token, "jobs") == 0)){
-			return true;
-		}
+bool isInternal(tokenlist *tokens, bool running){
+	printf("inside here line 68\n");
+	if((strcmp(tokens->items[0], "echo") == 0)){
+		echo(tokens);
+		return true;
+	}
+	else if(strcmp(tokens->items[0], "cd") == 0){
+		cd(tokens);
+		return true;
+	}
+	else if(strcmp(tokens->items[0], "exit") == 0){
+		exitCommand(running);
+		return true;
+	}
+	else if(strcmp(tokens->items[0], "jobs") == 0){
+		//jobs();
+		return true;
+	}
 	return false;
 }
 
-void handleInternal(tokenlist *tokens){
-	if(!(strcmp(tokens->items[0], "echo"))){
-		echo(tokens);
-	} //end of echo
-	else if(!(strcmp(tokens->items[0], "cd"))){
-		cd(tokens);
-	}
+void exitCommand(bool running){
+	sleep(10); //wait for other processes to finish //will need to change the number 10
+	//print last 3 valid commands
+	running = false;
+
 }
 
 void cd(tokenlist *tokens){
-	// char *second = tokens->items[1]; // this is what is after cd 
-	// printf("this is second %s\n", second);
-	// if(chdir(second) != 0)
-	// {
-	// 	perror("chdir() to token after cd failed");
-	// }
-	chdir("..");
+	chdir(tokens->items[1]);
+	char s[100];
+	setenv("PWD", getcwd(s, 100), 1); //1 means if PWD exists, it is updated
 }
 
 void echo(tokenlist *tokens){
@@ -125,8 +149,10 @@ void handleExternal(tokenlist *tokens){
 		else{
 			printf("input invalid\n");
 		}
+		exit(1);
 	} else if (pid > 0) {
 		waitpid(pid, NULL, 0);
+		// waitpid(-1, NULL, 0);
 	} else {
 		perror("fork");
 		exit(1);
@@ -198,7 +224,7 @@ void free_tokens(tokenlist *tokens) {
 }
 
 char * pathSearch (char * token){ //pass in one token and change it
-	tilde(token);
+	// tilde(token);
 	char * path = getenv("PATH");
 	char * copy = malloc(strlen(path));
 	strcpy(copy, path);
@@ -208,7 +234,7 @@ char * pathSearch (char * token){ //pass in one token and change it
 	printf("copy is %s\n", copy);
 	while(copy != NULL){
 		// printf("inside while\n");
-		cmd = realloc(cmd, copy + strlen(token) + 2); //2 because of the "/" and end null pointer (/0)
+		cmd = malloc(strlen(copy) + strlen(token) + 2); //2 because of the "/" and end null terminator (/0)
 		strcpy(cmd, copy);
 		strcat (cmd, "/");
 		strcat(cmd, token);
@@ -220,106 +246,100 @@ char * pathSearch (char * token){ //pass in one token and change it
 		}
 		copy = strtok(NULL, ":");
 	}
+	return copy;
 }
 
-char* tilde(char *token){
-	// for(int i = 0; i < tokens->size; i++){
-		// printf("i is %s\n", i);
-		// char * token = tokens->items[i];
-		// if(token[0] == '~'){
-		// 	char* homePath = getenv("HOME");
-		// 	char *new_path = (char *)malloc(strlen(homePath) + strlen(token));
-		// 	token = (char *)malloc(strlen(homePath) + strlen(token));
-		// 	strcpy(new_path, homePath);
-		// 	strcat(new_path, token + 1);
-		// 	strcpy(token, new_path);
-		// 	printf("inside tilde. New path is %s\n", token);
-		// }
-		char * path = malloc(strlen(getenv("HOME")) + strlen(token) +1);
-		strcpy(path, getenv("HOME"));
-		strcat(path, token+1);
-		return path;
-		
-	// }
-
-}
-
-
-void doCode(tokenlist *tokens){
-
-	//get first token
-	char *first = tokens->items[0]; //grab first
-	tilde(first);
-	//ls
-	if((strcmp(first, "ls")) == 0){
-		char *cmd[] = {"ls", NULL};
-		int pid = fork();
-		if (pid == 0) {
-			if (execv("/bin/ls", cmd) == -1) {
-				perror("execv");
-				exit(1);
-			}
-		} else if (pid > 0) {
-			waitpid(pid, NULL, 0);
-		} else {
-			perror("fork");
-			exit(1);
+void tilde(tokenlist *tokens){
+	for(size_t i = 0; i < tokens->size; i++){
+		char*token = tokens->items[i];
+		if(token[0] == '~'){ //check for tilde
+			printf("found ~\n");
+			char* home = getenv("HOME"); //same home path
+			char *new_path = malloc(strlen(home) + strlen(token) -1); //allocate new memory
+			strcpy(new_path, home);
+			strcat(new_path, token + 1); //concat what is needed
+			free(tokens->items[i]); //free memory
+			tokens->items[i] = new_path; //change the token
 		}
 	}
-	// cd
-	else if((strcmp(first, "cd")) == 0){
-		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //just cd, or ~ after, so make PWD, HOME
-		// 	// setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
-		// 	chdir(getenv("HOME"));
-		// 	printf("done\n");
-		// }
-
-		char *second = tokens->items[1]; // this is what is after cd 
-		printf("this is second %s", second);
-		if(chdir(second) != 0)
-		{
-			perror("chdir() to token after cd failed");
-		}
-		
-		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
-		// 	char current_directory[4096]; //buffer to store the current directory
-		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
-		// 		char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
-		// 		//might want to change above function to strtok() because that is what he uses in the shell PP
-		// 		if (last_slash != NULL) { //need to have found a "/"
-		// 			*last_slash = '\0'; //null-terminate the string at the last slash
-		// 			setenv("PWD", current_directory, 1); //change print working directory
-		// 			chdir(current_directory);
-		// 		} else {
-		// 			printf("Already at the root directory; cannot go up.\n");
-		// 		}
-		// 	} 
-		// 	else {
-		// 		perror("Error");
-		// 	}
-		// }
-		// //need to add if cd into folder into folder 
-		// else if (strcmp(tokens->items[1], "./bin") == 0){ //if cd ~
-		// 	//cd ~(something after)
-		// 	//check if file directory exists before going into it 
-		// 	// . is current directory
-		// 	// ~ is home directory
-		// 	printf("got in cd .\n");
-		// 	// DIR* dir = opendir("bin"); // DIR is a directory stream
-		// 	printf("got here\n");
-		// 	//if (dir) {
-		// 		/* Directory exists. */
-		// 		//setenv("PWD", tokens->items[1], 1); //change print working directory
-		// 		chdir(tokens->items[1]);
-		// 		//closedir(dir);
-		// 	// } else if (ENOENT == errno) {
-		// 	// 	/* Directory does not exist. */
-		// 	// } else {
-		// 	// 	/* opendir() failed for some other reason. */
-		// 	// }
-
-		// }
-	}
-
 }
+
+
+// void doCode(tokenlist *tokens){
+
+// 	//get first token
+// 	char *first = tokens->items[0]; //grab first
+// 	tilde(first);
+// 	//ls
+// 	if((strcmp(first, "ls")) == 0){
+// 		char *cmd[] = {"ls", NULL};
+// 		int pid = fork();
+// 		if (pid == 0) {
+// 			if (execv("/bin/ls", cmd) == -1) {
+// 				perror("execv");
+// 				exit(1);
+// 			}
+// 		} else if (pid > 0) {
+// 			waitpid(pid, NULL, 0);
+// 		} else {
+// 			perror("fork");
+// 			exit(1);
+// 		}
+// 	}
+// 	// cd
+// 	else if((strcmp(first, "cd")) == 0){
+// 		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //just cd, or ~ after, so make PWD, HOME
+// 		// 	// setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
+// 		// 	chdir(getenv("HOME"));
+// 		// 	printf("done\n");
+// 		// }
+
+// 		char *second = tokens->items[1]; // this is what is after cd 
+// 		printf("this is second %s", second);
+// 		if(chdir(second) != 0)
+// 		{
+// 			perror("chdir() to token after cd failed");
+// 		}
+		
+// 		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
+// 		// 	char current_directory[4096]; //buffer to store the current directory
+// 		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
+// 		// 		char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
+// 		// 		//might want to change above function to strtok() because that is what he uses in the shell PP
+// 		// 		if (last_slash != NULL) { //need to have found a "/"
+// 		// 			*last_slash = '\0'; //null-terminate the string at the last slash
+// 		// 			setenv("PWD", current_directory, 1); //change print working directory
+// 		// 			chdir(current_directory);
+// 		// 		} else {
+// 		// 			printf("Already at the root directory; cannot go up.\n");
+// 		// 		}
+// 		// 	} 
+// 		// 	else {
+// 		// 		perror("Error");
+// 		// 	}
+// 		// }
+// 		// //need to add if cd into folder into folder 
+// 		// else if (strcmp(tokens->items[1], "./bin") == 0){ //if cd ~
+// 		// 	//cd ~(something after)
+// 		// 	//check if file directory exists before going into it 
+// 		// 	// . is current directory
+// 		// 	// ~ is home directory
+// 		// 	printf("got in cd .\n");
+// 		// 	// DIR* dir = opendir("bin"); // DIR is a directory stream
+// 		// 	printf("got here\n");
+// 		// 	//if (dir) {
+// 		// 		/* Directory exists. */
+// 		// 		//setenv("PWD", tokens->items[1], 1); //change print working directory
+// 		// 		chdir(tokens->items[1]);
+// 		// 		//closedir(dir);
+// 		// 	// } else if (ENOENT == errno) {
+// 		// 	// 	/* Directory does not exist. */
+// 		// 	// } else {
+// 		// 	// 	/* opendir() failed for some other reason. */
+// 		// 	// }
+
+// 		// }
+// 	}
+
+// }
 
