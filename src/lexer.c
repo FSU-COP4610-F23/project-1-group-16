@@ -1,10 +1,8 @@
 /*
 Questions for TA:
 how do we move forward in a directory with cd and ls
-cd dir
-cd ./dir
-cd ~/dir
 make file 
+can we treat echo as internal
 */
 
 
@@ -33,8 +31,26 @@ int main()
 			printf("token %d: (%s)\n", i, tokens->items[i]); //this line is for testing and should be deleted later
 		}
 
+		//do tilde here
+		// tilde(tokens);
+		for(int i = 0; i < tokens->size; i++){
+			tilde(tokens->items[i]);
+		}
 		//this is where we take the tokens and do what we need to do with them 
-		doCode(tokens);
+		// doCode(tokens);
+		//if no entry
+		if(tokens->size == 0){ //if no input, move on and ask for input again 
+			return; //print a line
+		}
+		//if internal command
+		else if(isInternal(tokens->items[0])){
+			//internal command(tokens)
+			handleInternal(tokens);
+		}
+		else{
+			//external command(tokens)
+			handleExternal(tokens);
+		}
 
 		free(input);
 		free_tokens(tokens);
@@ -42,6 +58,81 @@ int main()
 
 	return 0;
 }
+
+bool isInternal(char* token){
+	if((strcmp(token, "echo") == 0) || 
+		(strcmp(token, "cd") == 0) || 
+		(strcmp(token, "exit") == 0) ||
+		(strcmp(token, "jobs") == 0)){
+			return true;
+		}
+	return false;
+}
+
+void handleInternal(tokenlist *tokens){
+	if(!(strcmp(tokens->items[0], "echo"))){
+		echo(tokens);
+	} //end of echo
+	else if(!(strcmp(tokens->items[0], "cd"))){
+		cd(tokens);
+	}
+}
+
+void cd(tokenlist *tokens){
+	// char *second = tokens->items[1]; // this is what is after cd 
+	// printf("this is second %s\n", second);
+	// if(chdir(second) != 0)
+	// {
+	// 	perror("chdir() to token after cd failed");
+	// }
+	chdir("..");
+}
+
+void echo(tokenlist *tokens){
+	if(tokens->size == 1){ //nothing after echo so just return empty line
+		printf("\n");
+	}
+	else {
+		int i = 1;
+		while(tokens->items[i] != NULL){
+			char *next = tokens->items[i]; //grab next
+			if(next[0] == '$'){ //if echoing an environment variable
+				char* sec = next;
+				sec++; //remove $
+				if(getenv(sec) != NULL){
+					printf("%s ", getenv(sec)); //prints the echo
+				}
+			}
+			else{
+				printf("%s ", next); //echo without $ just echos the user 
+			}
+			i++; //go to next word to echo 
+		}
+		printf("\n"); //end of echoing
+	}
+}
+
+void handleExternal(tokenlist *tokens){
+	tokens->items[0] = pathSearch(tokens->items[0]);
+	//pass above into execv
+	int pid = fork();
+	if (pid == 0) {
+		printf("passing in %s\n", tokens->items[0]);
+		if (execv(tokens->items[0], tokens->items) == -1) {
+			perror("execv");
+			exit(1);
+		}
+		else{
+			printf("input invalid\n");
+		}
+	} else if (pid > 0) {
+		waitpid(pid, NULL, 0);
+	} else {
+		perror("fork");
+		exit(1);
+	}
+}
+
 
 char *get_input(void) {
 	char *buffer = NULL;
@@ -106,39 +197,61 @@ void free_tokens(tokenlist *tokens) {
 	free(tokens);
 }
 
-void doCode(tokenlist *tokens){
-	if(tokens->size == 0){ //if no input, move on and ask for input again 
-		return;
+char * pathSearch (char * token){ //pass in one token and change it
+	tilde(token);
+	char * path = getenv("PATH");
+	char * copy = malloc(strlen(path));
+	strcpy(copy, path);
+	printf("copy is %s\n", copy);
+	strtok(copy, ":"); //deliminate path with :
+	char * cmd = NULL;
+	printf("copy is %s\n", copy);
+	while(copy != NULL){
+		// printf("inside while\n");
+		cmd = realloc(cmd, copy + strlen(token) + 2); //2 because of the "/" and end null pointer (/0)
+		strcpy(cmd, copy);
+		strcat (cmd, "/");
+		strcat(cmd, token);
+		// printf("cmd is %s\n", cmd);
+		if(access(cmd, F_OK) ==  0){
+			// printf("cmd is found and is %s\n", cmd);
+			free(token);
+			return cmd;
+		}
+		copy = strtok(NULL, ":");
 	}
+}
+
+char* tilde(char *token){
+	// for(int i = 0; i < tokens->size; i++){
+		// printf("i is %s\n", i);
+		// char * token = tokens->items[i];
+		// if(token[0] == '~'){
+		// 	char* homePath = getenv("HOME");
+		// 	char *new_path = (char *)malloc(strlen(homePath) + strlen(token));
+		// 	token = (char *)malloc(strlen(homePath) + strlen(token));
+		// 	strcpy(new_path, homePath);
+		// 	strcat(new_path, token + 1);
+		// 	strcpy(token, new_path);
+		// 	printf("inside tilde. New path is %s\n", token);
+		// }
+		char * path = malloc(strlen(getenv("HOME")) + strlen(token) +1);
+		strcpy(path, getenv("HOME"));
+		strcat(path, token+1);
+		return path;
+		
+	// }
+
+}
+
+
+void doCode(tokenlist *tokens){
+
 	//get first token
 	char *first = tokens->items[0]; //grab first
 	tilde(first);
-	//echo
-	if(!(strcmp(first, "echo"))){
-		if(tokens->size == 1){ //nothing after echo so just return empty line
-			printf("\n");
-		}
-		else {
-			int i = 1;
-			while(tokens->items[i] != NULL){
-				char *next = tokens->items[i]; //grab next
-				if(next[0] == '$'){ //if echoing an environment variable
-					char* sec = next;
-					sec++; //remove $
-					if(getenv(sec) != NULL){
-						printf("%s ", getenv(sec)); //prints the echo
-					}
-				}
-				else{
-					printf("%s ", next); //echo without $ just echos the user 
-				}
-				i++; //go to next word to echo 
-			}
-			printf("\n"); //end of echoing
-		}
-	} //end of echo
 	//ls
-	else if((strcmp(first, "ls")) == 0){
+	if((strcmp(first, "ls")) == 0){
 		char *cmd[] = {"ls", NULL};
 		int pid = fork();
 		if (pid == 0) {
@@ -210,14 +323,3 @@ void doCode(tokenlist *tokens){
 
 }
 
-void tilde(char *token){
-	if(token[0] == '~'){
-			char* replace = token; //get the token that has ~
-			replace++; //get rid of ~
-			char* adding = "$HOME";
-			char expanded[strlen(adding) + strlen(token)];
-			sprintf(expanded, "%s%s", adding, token+1);
-			strcpy(token, expanded);
-			printf("tok is %s\n", token);
-		}
-}
