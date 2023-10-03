@@ -15,8 +15,6 @@ are we allowed to use setenv
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
-
 int main()
 {
 	commandHistory history;
@@ -36,7 +34,8 @@ int main()
 
 		tokenlist *tokens = get_tokens(input);
 		for (int i = 0; i < tokens->size; i++) {
-			printf("token %d: (%s)\n", i, tokens->items[i]); //this line is for testing and should be deleted later
+			//this line is for testing and should be deleted later
+			printf("token %d: (%s)\n", i, tokens->items[i]); 
 		}
 
 		tilde(tokens);
@@ -130,7 +129,7 @@ int isInternal(tokenlist *tokens, bool running){
 
 void exitCommand(bool running){
 	printf("running is %d inside exitCommand\n", running);
-	sleep(2); //wait for other processes to finish //will need to change the number 10
+	sleep(2); //wait for other processes to finish //2 might be wrong number
 	//print last 3 valid commands
 	running = false;
 	printf("running is %d inside exitCommand\n", running);
@@ -185,7 +184,8 @@ int handleExternal(tokenlist *tokens){
 	int pid = fork(); //splits into two threads that are both at this line
 	if (pid == 0) { //if child thread: 
 		printf("passing in %s\n", tokens->items[0]);
-		if (execv(tokens->items[0], tokens->items) == -1) { //if execv is successful, the child thread is terminated here 
+		//if execv is successful, the child thread is terminated here 
+		if (execv(tokens->items[0], tokens->items) == -1) { 
 			valid = false;
 			printf("line 188\n");
 			perror("execv");
@@ -290,7 +290,8 @@ char * pathSearch (char * token){ //pass in one token and change it
 	printf("copy is %s\n", copy);
 	while(copy != NULL){
 		// printf("inside while\n");
-		cmd = malloc(strlen(copy) + strlen(token) + 2); //2 because of the "/" and end null terminator (/0)
+		//+ 2 --> "/" + end null terminator (/0)
+		cmd = malloc(strlen(copy) + strlen(token) + 2); 
 		strcpy(cmd, copy);
 		strcat (cmd, "/");
 		strcat(cmd, token);
@@ -311,7 +312,8 @@ void tilde(tokenlist *tokens){
 		if(token[0] == '~'){ //check for tilde
 			printf("found ~\n");
 			char* home = getenv("HOME"); //same home path
-			char *new_path = malloc(strlen(home) + strlen(token) -1); //allocate new memory
+			//allocate new memory
+			char *new_path = malloc(strlen(home) + strlen(token) -1);
 			strcpy(new_path, home);
 			strcat(new_path, token + 1); //concat what is needed
 			free(tokens->items[i]); //free memory
@@ -344,8 +346,10 @@ void tilde(tokenlist *tokens){
 // 	}
 // 	// cd
 // 	else if((strcmp(first, "cd")) == 0){
-// 		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ //just cd, or ~ after, so make PWD, HOME
-// 		// 	// setenv("PWD", getenv("HOME"), 1); //1 means if PWD exists, it is updated
+//		// //just cd, or ~ after, so make PWD, HOME
+// 		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ 
+//		//	//1 means if PWD exists, it is updated
+// 		// 	// setenv("PWD", getenv("HOME"), 1); 
 // 		// 	chdir(getenv("HOME"));
 // 		// 	printf("done\n");
 // 		// }
@@ -357,14 +361,16 @@ void tilde(tokenlist *tokens){
 // 			perror("chdir() to token after cd failed");
 // 		}
 		
-// 		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..(go back one directory)
+// 		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..
 // 		// 	char current_directory[4096]; //buffer to store the current directory
-// 		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { //grab current working directory and put in current_directory
-// 		// 		char* last_slash = strrchr(current_directory, '/'); //returns a pointer to the last occurrence of "/" in current_directory
-// 		// 		//might want to change above function to strtok() because that is what he uses in the shell PP
+//		// 	//grab current working directory and put in current_directory
+// 		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { 
+// 		// 		//returns a pointer to the last occurrence of "/" in current_directory
+// 		// 		char* last_slash = strrchr(current_directory, '/'); 
+// 		// 		//might want to change to strtok() --> what he uses in the shell PP
 // 		// 		if (last_slash != NULL) { //need to have found a "/"
 // 		// 			*last_slash = '\0'; //null-terminate the string at the last slash
-// 		// 			setenv("PWD", current_directory, 1); //change print working directory
+// 		// 			setenv("PWD", current_directory, 1);
 // 		// 			chdir(current_directory);
 // 		// 		} else {
 // 		// 			printf("Already at the root directory; cannot go up.\n");
@@ -385,7 +391,7 @@ void tilde(tokenlist *tokens){
 // 		// 	printf("got here\n");
 // 		// 	//if (dir) {
 // 		// 		/* Directory exists. */
-// 		// 		//setenv("PWD", tokens->items[1], 1); //change print working directory
+// 		// 		//setenv("PWD", tokens->items[1], 1);
 // 		// 		chdir(tokens->items[1]);
 // 		// 		//closedir(dir);
 // 		// 	// } else if (ENOENT == errno) {
