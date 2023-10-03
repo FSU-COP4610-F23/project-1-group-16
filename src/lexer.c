@@ -19,10 +19,12 @@ are we allowed to use setenv
 
 int main()
 {
-	char commandHistory[3][200];
-	int numValid = 0;
+	commandHistory history;
+	history.count = 0;
 	bool running = true;
 	while (running) {
+		bool executed = false;
+		printf("running is %d\n", running);
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
 		/* input contains the whole command
@@ -37,37 +39,35 @@ int main()
 			printf("token %d: (%s)\n", i, tokens->items[i]); //this line is for testing and should be deleted later
 		}
 
-		//do tilde here
-		// tilde(tokens);
-		// for(int i = 0; i < tokens->size; i++){
-		// 	// tilde(tokens->items[i]);
-		// 	char * help = tilde(tokens->items[i]);
-		// 	// tokens->items[i] = tilde(tokens->items[i]);
-		// 	printf("help is now %s\n", help);
-		// 	// free(help);
-		// }
 		tilde(tokens);
-		printf("got to line 43\n");
 		//this is where we take the tokens and do what we need to do with them 
 		// doCode(tokens);
 		//if no entry
 		if(tokens->size == 0){ //if no input, move on and ask for input again 
 			printf("\n"); //print a line
+			executed = true;
 		}
 		//if internal command
-		else if(isInternal(tokens, running)){
-			//internal command(tokens)
-			//add command to external command (need a function here) *******HERE******************************************************************
-			if(numValid<3){
-				numValid++;
+		if(!executed) {
+			int intern = isInternal(tokens, running);
+			if(intern != 0){ //found internal
+				if(intern == 1){
+					addCommandToValid(&history, input);
+				}
+				executed = true;
+			}
+			printf("running is %d\n", running);
+			if(intern == 3){
+				//exit
+				printf("found exit\n");
+				displayLastThree(&history);
 			}
 		}
-		else{
+		if(!executed){
+			printf("inside is external\n");
 			//external command(tokens)
-			handleExternal(tokens); //this needs to return bool
-			//add command to external command (need a function here) *******HERE******************************************************************
-			if(numValid<3){
-				numValid++;
+			if(handleExternal(tokens)){ //this needs to return bool
+				addCommandToValid(&history, input);
 			}
 		}
 
@@ -78,38 +78,76 @@ int main()
 	return 0;
 }
 
-bool isInternal(tokenlist *tokens, bool running){
+void addCommandToValid(commandHistory *history, char *command){
+	if(history->count<3){ //if we don't have three commands yet, simple add it on
+		strcpy(history->commands[history->count], command);
+		history->count++;
+	}
+	else{
+		for(int i = 0; i < 2; i++){
+			strcpy(history->commands[i], history->commands[i+1]);
+		}
+		strcpy(history->commands[2], command);
+	}
+}
+
+void displayLastThree(commandHistory *history){
+	printf("inside display last three\n");
+	// int start = (history->count > 3) ? history->count - 3 : 0;
+	for(int i = 0; i < history->count; i++){
+		printf("Command %d: %s\n", i + 1, history->commands[i]);
+	}
+}
+
+
+/*
+return 0 if not internal command
+return 1 if internal command successful
+return 2 if internal command not successful
+return 3 if exit
+*/
+int isInternal(tokenlist *tokens, bool running){
+	printf("running is %d inside isInternal\n", running);
 	printf("inside here line 68\n");
 	if((strcmp(tokens->items[0], "echo") == 0)){
 		echo(tokens);
-		return true;
+		return 1;
 	}
 	else if(strcmp(tokens->items[0], "cd") == 0){
-		cd(tokens);
-		return true;
+		return cd(tokens);
+		// return 1;
 	}
 	else if(strcmp(tokens->items[0], "exit") == 0){
 		exitCommand(running);
-		return true;
+		return 3;
 	}
 	else if(strcmp(tokens->items[0], "jobs") == 0){
 		//jobs();
-		return true;
+		return 1;
 	}
-	return false;
+	return 0;
 }
 
 void exitCommand(bool running){
-	sleep(10); //wait for other processes to finish //will need to change the number 10
+	printf("running is %d inside exitCommand\n", running);
+	sleep(2); //wait for other processes to finish //will need to change the number 10
 	//print last 3 valid commands
 	running = false;
+	printf("running is %d inside exitCommand\n", running);
+
 
 }
 
-void cd(tokenlist *tokens){
-	chdir(tokens->items[1]);
-	char s[100];
-	setenv("PWD", getcwd(s, 100), 1); //1 means if PWD exists, it is updated
+int cd(tokenlist *tokens){
+	if (chdir(tokens->items[1]) == 0){
+		char s[100];
+		setenv("PWD", getcwd(s, 100), 1); //1 means if PWD exists, it is updated
+		return 1;
+	}
+	else {
+		printf("errno");
+		return 2;
+	}
 }
 
 void echo(tokenlist *tokens){
@@ -136,24 +174,42 @@ void echo(tokenlist *tokens){
 	}
 }
 
-void handleExternal(tokenlist *tokens){
+/*
+return 0 is not valid
+return 1 is valid
+*/
+int handleExternal(tokenlist *tokens){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
-	int pid = fork();
-	if (pid == 0) {
+	bool valid = true;
+	int pid = fork(); //splits into two threads that are both at this line
+	if (pid == 0) { //if child thread: 
 		printf("passing in %s\n", tokens->items[0]);
-		if (execv(tokens->items[0], tokens->items) == -1) {
+		if (execv(tokens->items[0], tokens->items) == -1) { //if execv is successful, the child thread is terminated here 
+			valid = false;
+			printf("line 188\n");
 			perror("execv");
 			exit(1);
 		}
 		else{
+			valid = false;
 			printf("input invalid\n");
 		}
+		valid = false;
+		printf("line 197\n");
 		exit(1);
-	} else if (pid > 0) {
+	} else if (pid > 0) { //if parent thread
 		waitpid(pid, NULL, 0);
+
+		if(valid){
+			printf("valid is true\n");
+		}
+		else{
+			printf("valid is false\n");
+		}
+		printf("line 199\n");
 		// waitpid(-1, NULL, 0);
-	} else {
+	} else { //forking failed
 		perror("fork");
 		exit(1);
 	}
