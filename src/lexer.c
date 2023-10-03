@@ -2,6 +2,12 @@
 Questions for TA:
 make file 
 are we allowed to use setenv
+exit - we have printing last 3 but doesn't exit shell
+jobs
+i/o redirection
+piping
+background processing
+timeout executable
 */
 
 
@@ -14,9 +20,11 @@ are we allowed to use setenv
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 int main()
 {
+
 	commandHistory history;
 	history.count = 0;
 	bool running = true;
@@ -68,6 +76,33 @@ int main()
 			if(handleExternal(tokens)){ //this needs to return bool
 				addCommandToValid(&history, input);
 			}
+		}
+		//Input redirection
+		if(strcmp(tokens, "<") == 0)
+		{
+
+		}
+
+		//Output redirection
+		if(strcmp(tokens, ">") == 0)
+		{
+			int out = dup(STDOUT_FILENO);
+			close(STDOUT_FILENO);
+			int fd = open("alphabet.txt", O_RDWR | O_CREAT | O_TRUNC);
+			pid_t pid = fork();
+
+			if(pid == 0) 
+			{
+				char *x[2];
+				x[0] = tokens->items[0];
+				x[1] = NULL;
+
+				execv(x[0], x);
+			}
+
+			dup2(out, STDOUT_FILENO);
+			close(out);
+			printf("Redirected output to %s\n", out);
 		}
 
 		free(input);
