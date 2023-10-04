@@ -222,11 +222,12 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 	// Input redirection	
 	close(STDIN_FILENO); // Closes the file descriptor
 
-	if(open(in_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC) == -1){ // Open input file
+	if(open(in_file, O_RDONLY | O_SYNC) == -1){ // Open input file
 		return false;
 	}
 
 	return true;
+
 }
 /*
 return 0 is not valid
@@ -247,7 +248,10 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 			}
 		}
 		if(inRedirection){
-			//
+			if(!doInRedirection(tokens, in_file)){
+				printf("Input file redirection failed");
+				exit(1);
+			}
 		}
 		//if execv is successful, it terminates child
 		if (execv(tokens->items[0], tokens->items) == -1) { 
@@ -331,7 +335,7 @@ void free_tokens(tokenlist *tokens) {
 	free(tokens);
 }
 
-char * pathSearch (char * token){ //pass in one token and change it
+char *pathSearch (char * token){ //pass in one token and change it
 	// tilde(token);
 	char * path = getenv("PATH");
 	char * copy = malloc(strlen(path));
