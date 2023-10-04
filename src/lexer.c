@@ -2,9 +2,7 @@
 Questions for TA:
 make file 
 are we allowed to use setenv - YES
-exit - we have printing last 3 but doesn't exit shell
 jobs
-i/o redirection
 piping
 background processing
 timeout executable
@@ -37,20 +35,18 @@ parent can know if child successfully executed execv with WEXITSTATUS
 
 int main()
 {
-
 	commandHistory history;
 	history.count = 0;
-	bool running = true;
 	bool inRedirection; 
 	bool outRedirection; 
 	char *out_file;
+	char *in_file;
 
-	while (running) {
+	while (1) {
 		bool executed = false;
 		inRedirection = false; 
 		outRedirection = false; 
 		
-		printf("running is %d\n", running);
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
 		/* input contains the whole command
@@ -81,28 +77,28 @@ int main()
 				outRedirection = true;
 				out_file = tokens->items[j+1];
 				tokens->items[j] = NULL;
-				break;
+				break; //change to continue
 			}
 			if(strcmp(tokens->items[j], "<") == 0)
 			{
 				inRedirection = true;
+				in_file = tokens->items[j+1];
+				tokens->items[j] = NULL;
+				break;
 			}
 		}
 
 		// If internal command
 		if(!executed){
-			int intern = isInternal(tokens, running);
-			if(intern != 0){ // If found internal
-				if(intern == 1){ // If successful
+			int internal = isInternal(tokens);
+			if(internal != 0){ // If found internal
+				if(internal == 1){ // If successful
 					addCommandToValid(&history, input);
 				}
 				executed = true;
 			}
-
-			printf("running is %d\n", running);
 			
-			if(intern == 3){ // If exit
-				printf("found exit\n");
+			if(internal == 3){ // If exit
 				displayLastThree(&history);
 				exit(0);
 			}
@@ -110,9 +106,8 @@ int main()
 
 		// If external command
 		if(!executed){
-			printf("inside isExternal\n");
-			// External command(tokens)
-			if(handleExternal(tokens, inRedirection, outRedirection, out_file)){ //this needs to return bool
+			// External command
+			if(handleExternal(tokens, inRedirection, outRedirection, out_file) == true){
 				addCommandToValid(&history, input);
 			}
 		}
@@ -138,7 +133,6 @@ void addCommandToValid(commandHistory *history, char *command){
 }
 
 void displayLastThree(commandHistory *history){
-	printf("inside display last three\n");
 	// int start = (history->count > 3) ? history->count - 3 : 0;
 	for(int i = 0; i < history->count; i++){
 		printf("Command %d: %s\n", i + 1, history->commands[i]);
@@ -151,9 +145,7 @@ return 1 if internal command successful
 return 2 if internal command not successful
 return 3 if exit
 */
-int isInternal(tokenlist *tokens, bool running){
-	printf("running is %d inside isInternal\n", running);
-	printf("inside here line 68\n");
+int isInternal(tokenlist *tokens){
 	if((strcmp(tokens->items[0], "echo") == 0)){
 		echo(tokens);
 		return 1;
@@ -163,7 +155,7 @@ int isInternal(tokenlist *tokens, bool running){
 		// return 1;
 	}
 	else if(strcmp(tokens->items[0], "exit") == 0){
-		exitCommand(running);
+		exitCommand();
 		return 3;
 	}
 	else if(strcmp(tokens->items[0], "jobs") == 0){
@@ -173,14 +165,8 @@ int isInternal(tokenlist *tokens, bool running){
 	return 0;
 }
 
-void exitCommand(bool running){
-	printf("running is %d inside exitCommand\n", running);
-	sleep(2); //wait for other processes to finish //2 might be wrong number
-	//print last 3 valid commands
-	running = false;
-	printf("running is %d inside exitCommand\n", running);
-
-
+void exitCommand(){
+	//wait for other processes to finish //MORE CODE NEEDED HERE
 }
 
 int cd(tokenlist *tokens){
@@ -221,22 +207,13 @@ void echo(tokenlist *tokens){
 
 
 bool doOutRedirection(tokenlist *tokens, char *out_file){
-	// Output redirection
-	printf("Inside Output Redirection\n"); // ITS NOT GETTING INSIDE
-
-	for (int i = 0; i < tokens->size; i++) {
-		//this line is for testing and should be deleted later
-		printf("token %d: (%s)\n", i, tokens->items[i]); 
-	}
-	printf("out file is %s\n", out_file);
-	
+	// Output redirection	
 	close(STDOUT_FILENO); // Closes the file descriptor
 
 	if(open(out_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0600) == -1){ // Open output file
 		return false;
 	}
 
-	printf("Redirected output to %s\n", out_file);
 	return true;
 }
 
@@ -247,45 +224,37 @@ return 1 is valid
 int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
-	bool valid = true;
+	int status;
 	int pid = fork(); //splits into two threads that are both at this line
 	if (pid == 0) { //if child thread: 
-		printf("passing in %s\n", tokens->items[0]);
 		//if execv is successful, the child thread is terminated here 
 		if(outRedirection){
 			if(!doOutRedirection(tokens, out_file)){
 				//redirection did not work
+				printf("File redirection failed"); //may not need this
 				exit(1);
 			}
 		}
+		if(inRedirection){
+			//
+		}
+		//if execv is successful, it terminates child
 		if (execv(tokens->items[0], tokens->items) == -1) { 
-			valid = false;
-			printf("line 188\n");
 			perror("execv");
 			exit(1);
 		}
-		else{
-			valid = false;
-			printf("input invalid\n");
-		}
-		valid = false;
-		printf("line 197\n");
-		exit(1);
 	} else if (pid > 0) { //if parent thread
-		waitpid(pid, NULL, 0); //This NULL needs to change because it gets the if child successfully executed execv 
+		waitpid(pid, &status, 0); //This NULL needs to change because it gets the if child successfully executed execv 
+		//do something with status here and return 0 or 1 if child successfully executed execv
+		//if status tell us child ran successfully, return 1, else return 0
+		//if child was good
+		return true;
 
-		if(valid){
-			printf("valid is true\n");
-		}
-		else{
-			printf("valid is false\n");
-		}
-		printf("line 199\n");
-		// waitpid(-1, NULL, 0);
 	} else { //forking failed
 		perror("fork");
 		exit(1);
 	}
+	return false; //should never hit this line
 }
 
 char *get_input(void) {
@@ -356,20 +325,15 @@ char * pathSearch (char * token){ //pass in one token and change it
 	char * path = getenv("PATH");
 	char * copy = malloc(strlen(path));
 	strcpy(copy, path);
-	// printf("copy is %s\n", copy);
 	strtok(copy, ":"); //deliminate path with :
 	char * cmd = NULL;
-	// printf("copy is %s\n", copy);
 	while(copy != NULL){
-		// printf("inside while\n");
 		//+ 2 --> "/" + end null terminator (/0)
 		cmd = malloc(strlen(copy) + strlen(token) + 2); 
 		strcpy(cmd, copy);
 		strcat (cmd, "/");
 		strcat(cmd, token);
-		// printf("cmd is %s\n", cmd);
 		if(access(cmd, F_OK) ==  0){
-			// printf("cmd is found and is %s\n", cmd);
 			free(token);
 			return cmd;
 		}
@@ -382,7 +346,6 @@ void tilde(tokenlist *tokens){
 	for(size_t i = 0; i < tokens->size; i++){
 		char*token = tokens->items[i];
 		if(token[0] == '~'){ //check for tilde
-			printf("found ~\n");
 			char* home = getenv("HOME"); //same home path
 			//allocate new memory
 			char *new_path = malloc(strlen(home) + strlen(token) -1);
@@ -393,85 +356,3 @@ void tilde(tokenlist *tokens){
 		}
 	}
 }
-
-// void doCode(tokenlist *tokens){
-
-// 	//get first token
-// 	char *first = tokens->items[0]; //grab first
-// 	tilde(first);
-// 	//ls
-// 	if((strcmp(first, "ls")) == 0){
-// 		char *cmd[] = {"ls", NULL};
-// 		int pid = fork();
-// 		if (pid == 0) {
-// 			if (execv("/bin/ls", cmd) == -1) {
-// 				perror("execv");
-// 				exit(1);
-// 			}
-// 		} else if (pid > 0) {
-// 			waitpid(pid, NULL, 0);
-// 		} else {
-// 			perror("fork");
-// 			exit(1);
-// 		}
-// 	}
-// 	// cd
-// 	else if((strcmp(first, "cd")) == 0){
-//		// //just cd, or ~ after, so make PWD, HOME
-// 		// if((tokens->size == 1) || (strcmp(tokens->items[1], "~") == 0)){ 
-//		//	//1 means if PWD exists, it is updated
-// 		// 	// setenv("PWD", getenv("HOME"), 1); 
-// 		// 	chdir(getenv("HOME"));
-// 		// 	printf("done\n");
-// 		// }
-
-// 		char *second = tokens->items[1]; // this is what is after cd 
-// 		printf("this is second %s", second);
-// 		if(chdir(second) != 0)
-// 		{
-// 			perror("chdir() to token after cd failed");
-// 		}
-		
-// 		// else if(strcmp(tokens->items[1], "..") == 0){ //cd ..
-// 		// 	char current_directory[4096]; //buffer to store the current directory
-//		// 	//grab current working directory and put in current_directory
-// 		// 	if (getcwd(current_directory, sizeof(current_directory)) != NULL) { 
-// 		// 		//returns a pointer to the last occurrence of "/" in current_directory
-// 		// 		char* last_slash = strrchr(current_directory, '/'); 
-// 		// 		//might want to change to strtok() --> what he uses in the shell PP
-// 		// 		if (last_slash != NULL) { //need to have found a "/"
-// 		// 			*last_slash = '\0'; //null-terminate the string at the last slash
-// 		// 			setenv("PWD", current_directory, 1);
-// 		// 			chdir(current_directory);
-// 		// 		} else {
-// 		// 			printf("Already at the root directory; cannot go up.\n");
-// 		// 		}
-// 		// 	} 
-// 		// 	else {
-// 		// 		perror("Error");
-// 		// 	}
-// 		// }
-// 		// //need to add if cd into folder into folder 
-// 		// else if (strcmp(tokens->items[1], "./bin") == 0){ //if cd ~
-// 		// 	//cd ~(something after)
-// 		// 	//check if file directory exists before going into it 
-// 		// 	// . is current directory
-// 		// 	// ~ is home directory
-// 		// 	printf("got in cd .\n");
-// 		// 	// DIR* dir = opendir("bin"); // DIR is a directory stream
-// 		// 	printf("got here\n");
-// 		// 	//if (dir) {
-// 		// 		/* Directory exists. */
-// 		// 		//setenv("PWD", tokens->items[1], 1);
-// 		// 		chdir(tokens->items[1]);
-// 		// 		//closedir(dir);
-// 		// 	// } else if (ENOENT == errno) {
-// 		// 	// 	/* Directory does not exist. */
-// 		// 	// } else {
-// 		// 	// 	/* opendir() failed for some other reason. */
-// 		// 	// }
-
-// 		// }
-// 	}
-
-// }
