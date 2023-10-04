@@ -10,7 +10,6 @@ background processing
 timeout executable
 */
 
-
 #include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +19,7 @@ timeout executable
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <fcntl.h>
+#include <fcntl.h> // For I/O Redirection
 
 int main()
 {
@@ -28,8 +27,10 @@ int main()
 	commandHistory history;
 	history.count = 0;
 	bool running = true;
+	
 	while (running) {
 		bool executed = false;
+		
 		printf("running is %d\n", running);
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
@@ -41,49 +42,54 @@ int main()
 		printf("whole input: %s\n", input); //will be deleted later
 
 		tokenlist *tokens = get_tokens(input);
+		
 		for (int i = 0; i < tokens->size; i++) {
 			//this line is for testing and should be deleted later
 			printf("token %d: (%s)\n", i, tokens->items[i]); 
 		}
 
 		tilde(tokens);
-		//this is where we take the tokens and do what we need to do with them 
-		// doCode(tokens);
-		//if no entry
+		
+		// If no entry
 		if(tokens->size == 0){ //if no input, move on and ask for input again 
 			printf("\n"); //print a line
 			executed = true;
 		}
-		//if internal command
-		if(!executed) {
+
+		// If internal command
+		if(!executed){
 			int intern = isInternal(tokens, running);
-			if(intern != 0){ //found internal
-				if(intern == 1){
+			if(intern != 0){ // If found internal
+				if(intern == 1){ // If successful
 					addCommandToValid(&history, input);
 				}
 				executed = true;
 			}
+
 			printf("running is %d\n", running);
-			if(intern == 3){
-				//exit
+			
+			if(intern == 3){ // If exit
 				printf("found exit\n");
 				displayLastThree(&history);
 			}
 		}
+
+		// If external command
 		if(!executed){
-			printf("inside is external\n");
-			//external command(tokens)
+			printf("inside isExternal\n");
+			// External command(tokens)
 			if(handleExternal(tokens)){ //this needs to return bool
 				addCommandToValid(&history, input);
 			}
 		}
-		//Input redirection
+
+		// Input redirection
 		if(strcmp(tokens, "<") == 0)
 		{
 
 		}
 
-		//Output redirection
+		// Output redirection
 		if(strcmp(tokens, ">") == 0)
 		{
 			int out = dup(STDOUT_FILENO);
@@ -110,7 +116,7 @@ int main()
 	}
 
 	return 0;
-}
+} // END OF MAIN
 
 void addCommandToValid(commandHistory *history, char *command){
 	if(history->count<3){ //if we don't have three commands yet, simple add it on
@@ -133,13 +139,13 @@ void displayLastThree(commandHistory *history){
 	}
 }
 
-
 /*
 return 0 if not internal command
 return 1 if internal command successful
 return 2 if internal command not successful
 return 3 if exit
 */
+
 int isInternal(tokenlist *tokens, bool running){
 	printf("running is %d inside isInternal\n", running);
 	printf("inside here line 68\n");
@@ -212,6 +218,7 @@ void echo(tokenlist *tokens){
 return 0 is not valid
 return 1 is valid
 */
+
 int handleExternal(tokenlist *tokens){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
@@ -249,7 +256,6 @@ int handleExternal(tokenlist *tokens){
 		exit(1);
 	}
 }
-
 
 char *get_input(void) {
 	char *buffer = NULL;
@@ -357,7 +363,6 @@ void tilde(tokenlist *tokens){
 	}
 }
 
-
 // void doCode(tokenlist *tokens){
 
 // 	//get first token
@@ -439,4 +444,3 @@ void tilde(tokenlist *tokens){
 // 	}
 
 // }
-
