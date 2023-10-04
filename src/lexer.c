@@ -1,13 +1,26 @@
 /*
 Questions for TA:
 make file 
-are we allowed to use setenv
+are we allowed to use setenv - YES
 exit - we have printing last 3 but doesn't exit shell
 jobs
 i/o redirection
 piping
 background processing
 timeout executable
+external timeout executable - need to create new program that has nothing to do with this program
+
+mytimeout
+pass in command arguments (4 arguments)
+fork()
+execv(argv[2], argv +2)
+//parent
+wait how many seconds specified then kill
+parent kill child
+kill(pid, SIG_kill)
+
+
+parent can know if child successfully executed execv with WEXITSTATUS
 */
 
 #include "lexer.h"
@@ -20,6 +33,7 @@ timeout executable
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h> // For I/O Redirection
+#include <sys/stat.h> // For I/O Redirection
 
 int main()
 {
@@ -27,9 +41,14 @@ int main()
 	commandHistory history;
 	history.count = 0;
 	bool running = true;
-	
+	bool inRedirection; 
+	bool outRedirection; 
+	char *out_file;
+
 	while (running) {
 		bool executed = false;
+		inRedirection = false; 
+		outRedirection = false; 
 		
 		printf("running is %d\n", running);
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
@@ -56,6 +75,20 @@ int main()
 			executed = true;
 		}
 
+		for(int j = 1; j < tokens->size; j++){
+			if((strcmp(tokens->items[j], ">") == 0)){
+				// Input redirection
+				outRedirection = true;
+				out_file = tokens->items[j+1];
+				tokens->items[j] = NULL;
+				break;
+			}
+			if(strcmp(tokens->items[j], "<") == 0)
+			{
+				inRedirection = true;
+			}
+		}
+
 		// If internal command
 		if(!executed){
 			int intern = isInternal(tokens, running);
@@ -71,6 +104,7 @@ int main()
 			if(intern == 3){ // If exit
 				printf("found exit\n");
 				displayLastThree(&history);
+				exit(0);
 			}
 		}
 
@@ -78,39 +112,11 @@ int main()
 		if(!executed){
 			printf("inside isExternal\n");
 			// External command(tokens)
-			if(handleExternal(tokens)){ //this needs to return bool
+			if(handleExternal(tokens, inRedirection, outRedirection, out_file)){ //this needs to return bool
 				addCommandToValid(&history, input);
 			}
 		}
-
-		// Input redirection
-		if(strcmp(tokens, "<") == 0)
-		{
-
-		}
-
-		// Output redirection
-		if(strcmp(input, ">") == 0) // I think this is wrong
-		{
-			printf("Inside Output Redirection\n"); // ITS NOT GETTING INSIDE
-
-			char *outputFileName = tokens + 1; // Gets the file that is after the ">" token
-			close(STDOUT_FILENO); // Closes the file descriptor
-			open(outputFileName, O_RDWR | O_CREAT | O_TRUNC); // Open output file
-			
-			// pid_t pid = fork();
-			// if(pid == 0) 
-			// {
-			// 	char *x[2];
-			// 	x[0] = tokens->items[0];
-			// 	x[1] = NULL;
-
-			// 	execv(x[0], x);
-			// }
-
-			printf("Redirected output to %s\n", outputFileName);
-		}
-
+		
 		free(input);
 		free_tokens(tokens);
 	}
@@ -145,7 +151,6 @@ return 1 if internal command successful
 return 2 if internal command not successful
 return 3 if exit
 */
-
 int isInternal(tokenlist *tokens, bool running){
 	printf("running is %d inside isInternal\n", running);
 	printf("inside here line 68\n");
@@ -180,8 +185,8 @@ void exitCommand(bool running){
 
 int cd(tokenlist *tokens){
 	if (chdir(tokens->items[1]) == 0){
-		char s[100];
-		setenv("PWD", getcwd(s, 100), 1); //1 means if PWD exists, it is updated
+		char s[200]; //200 should be max length of PWD
+		setenv("PWD", getcwd(s, 200), 1); //1 means if PWD exists, it is updated
 		return 1;
 	}
 	else {
@@ -214,12 +219,32 @@ void echo(tokenlist *tokens){
 	}
 }
 
+
+bool doOutRedirection(tokenlist *tokens, char *out_file){
+	// Output redirection
+	printf("Inside Output Redirection\n"); // ITS NOT GETTING INSIDE
+
+	for (int i = 0; i < tokens->size; i++) {
+		//this line is for testing and should be deleted later
+		printf("token %d: (%s)\n", i, tokens->items[i]); 
+	}
+	printf("out file is %s\n", out_file);
+	
+	close(STDOUT_FILENO); // Closes the file descriptor
+
+	if(open(out_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0600) == -1){ // Open output file
+		return false;
+	}
+
+	printf("Redirected output to %s\n", out_file);
+	return true;
+}
+
 /*
 return 0 is not valid
 return 1 is valid
 */
-
-int handleExternal(tokenlist *tokens){
+int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
 	bool valid = true;
@@ -227,6 +252,12 @@ int handleExternal(tokenlist *tokens){
 	if (pid == 0) { //if child thread: 
 		printf("passing in %s\n", tokens->items[0]);
 		//if execv is successful, the child thread is terminated here 
+		if(outRedirection){
+			if(!doOutRedirection(tokens, out_file)){
+				//redirection did not work
+				exit(1);
+			}
+		}
 		if (execv(tokens->items[0], tokens->items) == -1) { 
 			valid = false;
 			printf("line 188\n");
@@ -241,7 +272,7 @@ int handleExternal(tokenlist *tokens){
 		printf("line 197\n");
 		exit(1);
 	} else if (pid > 0) { //if parent thread
-		waitpid(pid, NULL, 0);
+		waitpid(pid, NULL, 0); //This NULL needs to change because it gets the if child successfully executed execv 
 
 		if(valid){
 			printf("valid is true\n");
@@ -325,10 +356,10 @@ char * pathSearch (char * token){ //pass in one token and change it
 	char * path = getenv("PATH");
 	char * copy = malloc(strlen(path));
 	strcpy(copy, path);
-	printf("copy is %s\n", copy);
+	// printf("copy is %s\n", copy);
 	strtok(copy, ":"); //deliminate path with :
 	char * cmd = NULL;
-	printf("copy is %s\n", copy);
+	// printf("copy is %s\n", copy);
 	while(copy != NULL){
 		// printf("inside while\n");
 		//+ 2 --> "/" + end null terminator (/0)
