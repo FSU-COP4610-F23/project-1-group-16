@@ -73,7 +73,7 @@ int main()
 
 		for(int j = 1; j < tokens->size; j++){
 			if((strcmp(tokens->items[j], ">") == 0)){
-				// Input redirection
+				// Output redirection
 				outRedirection = true;
 				out_file = tokens->items[j+1];
 				tokens->items[j] = NULL;
@@ -81,6 +81,7 @@ int main()
 			}
 			if(strcmp(tokens->items[j], "<") == 0)
 			{
+				// Input redirection
 				inRedirection = true;
 				in_file = tokens->items[j+1];
 				tokens->items[j] = NULL;
@@ -107,7 +108,7 @@ int main()
 		// If external command
 		if(!executed){
 			// External command
-			if(handleExternal(tokens, inRedirection, outRedirection, out_file) == true){
+			if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file) == true){
 				addCommandToValid(&history, input);
 			}
 		}
@@ -217,11 +218,21 @@ bool doOutRedirection(tokenlist *tokens, char *out_file){
 	return true;
 }
 
+bool doInRedirection(tokenlist *tokens, char *in_file){
+	// Input redirection	
+	close(STDIN_FILENO); // Closes the file descriptor
+
+	if(open(in_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC) == -1){ // Open input file
+		return false;
+	}
+
+	return true;
+}
 /*
 return 0 is not valid
 return 1 is valid
 */
-int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file){
+int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file, char *in_file){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
 	int status;
