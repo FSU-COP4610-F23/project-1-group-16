@@ -77,15 +77,14 @@ int main()
 				outRedirection = true;
 				out_file = tokens->items[j+1];
 				tokens->items[j] = NULL;
-				break; //change to continue
+				continue;
 			}
-			if(strcmp(tokens->items[j], "<") == 0)
-			{
+			if((strcmp(tokens->items[j], "<") == 0)){
 				// Input redirection
 				inRedirection = true;
 				in_file = tokens->items[j+1];
 				tokens->items[j] = NULL;
-				break;
+				continue;
 			}
 		}
 
@@ -228,6 +227,15 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 
 	return true;
 
+	/* 
+	sort < alphabet.txt > output.txt 
+	The result from this command is that alphabet.txt remains unchanged but output.txt now has the sorted contents of alphabet.txt
+
+	sort > alphabet.txt < output.txt
+	The result from this command is that output.txt remains unchanged but alphabet.txt now has the contents of output.txt
+	*/
+
+
 }
 /*
 return 0 is not valid
@@ -237,7 +245,7 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
 	int status;
-	int pid = fork(); //splits into two threads that are both at this line
+	pid_t pid = fork(); //splits into two threads that are both at this line
 	if (pid == 0) { //if child thread: 
 		//if execv is successful, the child thread is terminated here 
 		if(outRedirection){
@@ -245,7 +253,7 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 				//redirection did not work
 				printf("File redirection failed"); //may not need this
 				exit(1);
-			}
+			} 
 		}
 		if(inRedirection){
 			if(!doInRedirection(tokens, in_file)){
