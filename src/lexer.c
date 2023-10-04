@@ -90,25 +90,25 @@ int main()
 		}
 
 		// Output redirection
-		if(strcmp(tokens, ">") == 0)
+		if(strcmp(input, ">") == 0) // I think this is wrong
 		{
-			int out = dup(STDOUT_FILENO);
-			close(STDOUT_FILENO);
-			int fd = open("alphabet.txt", O_RDWR | O_CREAT | O_TRUNC);
-			pid_t pid = fork();
+			printf("Inside Output Redirection\n"); // ITS NOT GETTING INSIDE
 
-			if(pid == 0) 
-			{
-				char *x[2];
-				x[0] = tokens->items[0];
-				x[1] = NULL;
+			char *outputFileName = tokens + 1; // Gets the file that is after the ">" token
+			close(STDOUT_FILENO); // Closes the file descriptor
+			open(outputFileName, O_RDWR | O_CREAT | O_TRUNC); // Open output file
+			
+			// pid_t pid = fork();
+			// if(pid == 0) 
+			// {
+			// 	char *x[2];
+			// 	x[0] = tokens->items[0];
+			// 	x[1] = NULL;
 
-				execv(x[0], x);
-			}
+			// 	execv(x[0], x);
+			// }
 
-			dup2(out, STDOUT_FILENO);
-			close(out);
-			printf("Redirected output to %s\n", out);
+			printf("Redirected output to %s\n", outputFileName);
 		}
 
 		free(input);
