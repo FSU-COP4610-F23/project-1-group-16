@@ -17,7 +17,6 @@ wait how many seconds specified then kill
 parent kill child
 kill(pid, SIG_kill)
 
-
 parent can know if child successfully executed execv with WEXITSTATUS
 */
 
@@ -41,7 +40,7 @@ int main()
 	bool outRedirection; 
 	char *out_file;
 	char *in_file;
-	bool foundPipe = false;
+	bool foundPipe;
 
 	while (1) {
 		bool executed = false;
@@ -73,24 +72,7 @@ int main()
 			executed = true;
 		}
 
-		for(int j = 1; j < tokens->size; j++){
-			if((strcmp(tokens->items[j], ">") == 0)){
-				// Output redirection
-				outRedirection = true;
-				out_file = tokens->items[j+1];
-				tokens->items[j] = NULL;
-				continue;
-			}
-			if((strcmp(tokens->items[j], "<") == 0)){
-				// Input redirection
-				inRedirection = true;
-				in_file = tokens->items[j+1];
-				tokens->items[j] = NULL;
-				continue;
-			}
-		}
-
-
+		// This is where we handle piping in main
 		for(int i = 0; i < tokens->size; i++){
 			if((strcmp(tokens->items[i], "|") == 0)){
 				//found pipe
@@ -109,6 +91,23 @@ int main()
 					perror("fork");
 					exit(1);
 				}
+			}
+		}
+
+		for(int i = 1; i < tokens->size; i++){
+			if((strcmp(tokens->items[i], ">") == 0)){
+				// Output redirection
+				outRedirection = true;
+				out_file = tokens->items[i+1];
+				tokens->items[i] = NULL;
+				continue;
+			}
+			if((strcmp(tokens->items[i], "<") == 0)){
+				// Input redirection
+				inRedirection = true;
+				in_file = tokens->items[i+1];
+				tokens->items[i] = NULL;
+				continue;
 			}
 		}
 
@@ -165,65 +164,84 @@ int main()
 	return 0;
 } // END OF MAIN
 
-void doPipe(tokenlist *tokens, int loc){
+bool doPipe(tokenlist *tokens, int loc){
 	printf("inside doPipe\n");
+	
 	// create array for pipe file descriptors
 	int fd[2];
-	// create read and write end of pipe
-	pipe(fd);
-	printf("fd[0] = %d, fd[1] = %d\n", fd[0], fd[1]);
+	
+	// create read and write ends of pipe
+	pipe(fd); // Could've done this - int pipe(int fd[2]);
+	printf("fd[0] = %d\nfd[1] = %d\n", fd[0], fd[1]); //fd[0] = 3, fd[1] = 4
+	
 	// create new process
 	pid_t pid = fork();
 
 	// child process
 	if(pid == 0) {
 		printf("inside child\n");
-		// initialize command
-		char *x[2];
-		x[0] = "ls";
-		x[1] = NULL;
 
-		// replace stdout with write end of pipe
 		dup2(fd[1], STDOUT_FILENO);
-		// close read end of pipe
 		close(fd[0]);
-		// close duplicate reference to write end of pipe
 		close(fd[1]);
+		// execv here somewhere?
+		exit(0);
+		
+		// // initialize command
+		// char *x[2];
+		// x[0] = tokens->items[0];
+		// x[1] = NULL;
 
-		// for(int i = loc; i > 0; i--){
-		// 	free(tokens->items);
-		// 	tokens->size--;
-		// }
-		// if (execv(tokens->items[0], tokens->items) == -1) { 
-		// 	perror("execv");
-		// 	exit(1);
-		// }
-		execvp(x[0], x);
+		// // replace stdout with write end of pipe
+		// dup2(fd[1], STDOUT_FILENO);
+		
+		// // close read end of pipe
+		// close(fd[0]);
+		
+		// // close duplicate reference to write end of pipe
+		// close(fd[1]);
+
+		for(int i = loc; i > 0; i--){
+			free(tokens->items);
+			tokens->size--;
+		}
+		if (execv(tokens->items[0], tokens->items) == -1) { 
+			perror("execv");
+			exit(1);
+		}
+		// execvp(x[0], x); // Can't use
 	}
 	// parent process
 	else {
 		printf("inside parent\n");
 
-		// initialize command
-		char *x[3];
-		x[0] = "wc";
-		x[1] = "-l";
-		x[2] = NULL;
-
-		// replace stdin with read end of pipe
 		dup2(fd[0], STDIN_FILENO);
-		// close read end of pipe
 		close(fd[0]);
-		// close duplicate reference to write end of pipe
 		close(fd[1]);
+		exit(0);
 
-		// if (execv(tokens->items[loc], tokens->items+loc) == -1) { 
-		// 	perror("execv");
-		// 	exit(1);
-		// }
+		// // initialize command
+		// char *x[3];
+		// x[0] = "wc";
+		// x[1] = "-l";
+		// x[2] = NULL;
 
-		// remember to use execv() instead of execvp() for the project!
-		execvp(x[0], x);
+		// // replace stdin with read end of pipe
+		// dup2(fd[0], STDIN_FILENO);
+		
+		// // close read end of pipe
+		// close(fd[0]);
+		
+		// // close duplicate reference to write end of pipe
+		// close(fd[1]);
+
+		// // if (execv(tokens->items[loc], tokens->items+loc) == -1) { 
+		// // 	perror("execv");
+		// // 	exit(1);
+		// // }
+
+		// // remember to use execv() instead of execvp() for the project!
+		// execvp(x[0], x);
 	}
 }
 
@@ -313,7 +331,6 @@ void echo(tokenlist *tokens){
 	}
 }
 
-
 bool doOutRedirection(tokenlist *tokens, char *out_file){
 	// Output redirection	
 	close(STDOUT_FILENO); // Closes the file descriptor
@@ -336,13 +353,12 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 	return true;
 
 	/* 
-	sort < alphabet.txt > output.txt 
+	sort < alphabet.txt > output.txt - THIS WORKS
 	The result from this command is that alphabet.txt remains unchanged but output.txt now has the sorted contents of alphabet.txt
 
-	sort > alphabet.txt < output.txt
+	sort > alphabet.txt < output.txt - THIS WORKS
 	The result from this command is that output.txt remains unchanged but alphabet.txt now has the contents of output.txt
 	*/
-
 
 }
 /*
@@ -369,6 +385,11 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 				exit(1);
 			}
 		}
+		// if(foundPipe){
+		// 	if(!doPipe(tokens, loc)){
+
+		// 	}
+		// }
 		//if execv is successful, it terminates child
 		if (execv(tokens->items[0], tokens->items) == -1) { 
 			perror("execv");
@@ -410,8 +431,6 @@ char *get_input(void) {
 	buffer[bufsize] = 0;
 	return buffer;
 }
-
-
 
 tokenlist *new_tokenlist(void) {
 	tokenlist *tokens = (tokenlist *)malloc(sizeof(tokenlist));
