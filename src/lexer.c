@@ -41,11 +41,13 @@ int main()
 	bool outRedirection; 
 	char *out_file;
 	char *in_file;
+	bool foundPipe = false;
 
 	while (1) {
 		bool executed = false;
 		inRedirection = false; 
 		outRedirection = false; 
+		foundPipe = false;
 		
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
@@ -88,27 +90,71 @@ int main()
 			}
 		}
 
-		// If internal command
-		if(!executed){
-			int internal = isInternal(tokens);
-			if(internal != 0){ // If found internal
-				if(internal == 1){ // If successful
-					addCommandToValid(&history, input);
+
+		for(int i = 0; i < tokens->size; i++){
+			if((strcmp(tokens->items[i], "|") == 0)){
+				//found pipe
+				pid_t pid = fork();
+				if(pid == 0){
+					doPipe(tokens, i);
+					exit(0);
 				}
-				executed = true;
-			}
-			
-			if(internal == 3){ // If exit
-				displayLastThree(&history);
-				exit(0);
+				else if (pid > 0){
+					//parent
+					waitpid(pid, NULL, 0);
+					//need to not do rest of while loop
+					foundPipe = true;
+				}
+				else{
+					perror("fork");
+					exit(1);
+				}
 			}
 		}
 
-		// If external command
-		if(!executed){
-			// External command
-			if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file) == true){
-				addCommandToValid(&history, input);
+		// if(strcmp(tokens.items[tokens.size-1], "&") == 0){
+		// 	pid_t pid = fork();
+		// 	if(pid == 0){
+		// 		//child
+		// 		//print thing
+		// 		//execute cmd
+		// 		//print 
+		// 	}
+		// 	else if(pid > 0){
+		// 		//parent
+		// 		free(input);
+		// 		free_tokens(tokens);
+		// 		continue; //this should continue to top of while loop
+		// 	}
+		// 	else{
+		// 		perror("fork");
+		// 		exit(1);
+		// 	}
+		// }
+
+		if(!foundPipe){
+			// If internal command
+			if(!executed){
+				int internal = isInternal(tokens);
+				if(internal != 0){ // If found internal
+					if(internal == 1){ // If successful
+						addCommandToValid(&history, input);
+					}
+					executed = true;
+				}
+				
+				if(internal == 3){ // If exit
+					displayLastThree(&history);
+					exit(0);
+				}
+			}
+
+			// If external command
+			if(!executed){
+				// External command
+				if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file) == true){
+					addCommandToValid(&history, input);
+				}
 			}
 		}
 		
@@ -118,6 +164,68 @@ int main()
 
 	return 0;
 } // END OF MAIN
+
+void doPipe(tokenlist *tokens, int loc){
+	printf("inside doPipe\n");
+	// create array for pipe file descriptors
+	int fd[2];
+	// create read and write end of pipe
+	pipe(fd);
+	printf("fd[0] = %d, fd[1] = %d\n", fd[0], fd[1]);
+	// create new process
+	pid_t pid = fork();
+
+	// child process
+	if(pid == 0) {
+		printf("inside child\n");
+		// initialize command
+		char *x[2];
+		x[0] = "ls";
+		x[1] = NULL;
+
+		// replace stdout with write end of pipe
+		dup2(fd[1], STDOUT_FILENO);
+		// close read end of pipe
+		close(fd[0]);
+		// close duplicate reference to write end of pipe
+		close(fd[1]);
+
+		// for(int i = loc; i > 0; i--){
+		// 	free(tokens->items);
+		// 	tokens->size--;
+		// }
+		// if (execv(tokens->items[0], tokens->items) == -1) { 
+		// 	perror("execv");
+		// 	exit(1);
+		// }
+		execvp(x[0], x);
+	}
+	// parent process
+	else {
+		printf("inside parent\n");
+
+		// initialize command
+		char *x[3];
+		x[0] = "wc";
+		x[1] = "-l";
+		x[2] = NULL;
+
+		// replace stdin with read end of pipe
+		dup2(fd[0], STDIN_FILENO);
+		// close read end of pipe
+		close(fd[0]);
+		// close duplicate reference to write end of pipe
+		close(fd[1]);
+
+		// if (execv(tokens->items[loc], tokens->items+loc) == -1) { 
+		// 	perror("execv");
+		// 	exit(1);
+		// }
+
+		// remember to use execv() instead of execvp() for the project!
+		execvp(x[0], x);
+	}
+}
 
 void addCommandToValid(commandHistory *history, char *command){
 	if(history->count<3){ //if we don't have three commands yet, simple add it on
@@ -382,28 +490,27 @@ void tilde(tokenlist *tokens){
 	}
 }
 
-// struct Job {
-//     int numJobs;
+// typedef struct {
+//     // int numJobs = 0;
 //     pid_t pid;
-//     char cmdLine[100];
-//     int status;     //0 is running, 1 is done
-// };
+//     // char cmdLine[100];
+// 	tokenlist tokens;
+//     int status = 0;     //0 is not running, 1 is running
+// } Job;
 
-// struct Job backgroundsJobs[10];
-// int next_job_num = 1;
+// Job backgroundsJobs[10];
 
 // void addJob(pid_t pid, const char* cmdLine)
 // {
 //     for(int i=0; i<sizeof(backgroundsJobs); i++)
 //     {
-//         if(backgroundsJobs[i].status == 1)
+//         if(backgroundsJobs[i].status == 0) //found open job space
 //         {
-//             struct Job j;
-//             j.numJobs = next_job_num++;
-//             j.pid = pid;
-//             strncpy(j.cmdLine, cmdLine, sizeof(j.cmdLine));
-//             j.status = 0;
-//             backgroundsJobs[j.numJobs - 1]= j;
+//             Job j = backgroundsJobs[i];
+//             // j.pid = pid;
+//             strcpy(j.cmdLine, cmdLine);
+//             j.status = 1;
+//             // backgroundsJobs[j.numJobs - 1]= j;
 //         }
 //         else
 //         {
