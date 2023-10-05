@@ -303,6 +303,8 @@ char *get_input(void) {
 	return buffer;
 }
 
+
+
 tokenlist *new_tokenlist(void) {
 	tokenlist *tokens = (tokenlist *)malloc(sizeof(tokenlist));
 	tokens->size = 0;
@@ -379,3 +381,51 @@ void tilde(tokenlist *tokens){
 		}
 	}
 }
+
+// struct Job {
+//     int numJobs;
+//     pid_t pid;
+//     char cmdLine[100];
+//     int status;     //0 is running, 1 is done
+// };
+
+// struct Job backgroundsJobs[10];
+// int next_job_num = 1;
+
+// void addJob(pid_t pid, const char* cmdLine)
+// {
+//     for(int i=0; i<sizeof(backgroundsJobs); i++)
+//     {
+//         if(backgroundsJobs[i].status == 1)
+//         {
+//             struct Job j;
+//             j.numJobs = next_job_num++;
+//             j.pid = pid;
+//             strncpy(j.cmdLine, cmdLine, sizeof(j.cmdLine));
+//             j.status = 0;
+//             backgroundsJobs[j.numJobs - 1]= j;
+//         }
+//         else
+//         {
+//             printf("Maximum number of background jobs reached.\n");
+//         }
+//     }
+// }
+
+// void checkJobs()
+// {
+//     for(int i = 0; i<10; i++)
+//     {
+//         if(backgroundsJobs[i].status == 0)
+//         {
+//             int stat;
+//             pid_t result = waitpid(backgroundsJobs[i].pid, &stat, WNOHANG);     //indicates that the parent process shouldn't wait
+//             if(result == backgroundsJobs[i].pid)
+//             {
+//                 backgroundsJobs[i].status = 1;
+//                 printf("[%d] done %s\n", backgroundsJobs[i].numJobs, backgroundsJobs[i].cmdLine);
+//             }
+            
+//         }
+//     }
+// }
