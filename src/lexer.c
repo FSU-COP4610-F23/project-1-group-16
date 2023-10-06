@@ -29,8 +29,8 @@ parent can know if child successfully executed execv with WEXITSTATUS
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <fcntl.h> // For I/O Redirection
-#include <sys/stat.h> // For I/O Redirection
+#include <fcntl.h>
+#include <sys/stat.h>
 
 int main()
 {
@@ -78,11 +78,12 @@ int main()
 				//found pipe
 				pid_t pid = fork();
 				if(pid == 0){
+					// Child
 					doPipe(tokens, i);
 					exit(0);
 				}
 				else if (pid > 0){
-					//parent
+					// Parent
 					waitpid(pid, NULL, 0);
 					//need to not do rest of while loop
 					foundPipe = true;
@@ -151,7 +152,7 @@ int main()
 			// If external command
 			if(!executed){
 				// External command
-				if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file) == true){
+				if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file, foundPipe) == true){
 					addCommandToValid(&history, input);
 				}
 			}
@@ -172,7 +173,7 @@ bool doPipe(tokenlist *tokens, int loc){
 	
 	// create read and write ends of pipe
 	pipe(fd); // Could've done this - int pipe(int fd[2]);
-	printf("fd[0] = %d\nfd[1] = %d\n", fd[0], fd[1]); //fd[0] = 3, fd[1] = 4
+	printf("fd[0] = %d\nfd[1] = %d\n", fd[0], fd[1]); // fd[0] = 3, fd[1] = 4
 	
 	// create new process
 	pid_t pid = fork();
@@ -281,7 +282,6 @@ int isInternal(tokenlist *tokens){
 		// return 1;
 	}
 	else if(strcmp(tokens->items[0], "exit") == 0){
-		exitCommand();
 		return 3;
 	}
 	else if(strcmp(tokens->items[0], "jobs") == 0){
@@ -289,10 +289,6 @@ int isInternal(tokenlist *tokens){
 		return 1;
 	}
 	return 0;
-}
-
-void exitCommand(){
-	//wait for other processes to finish //MORE CODE NEEDED HERE
 }
 
 int cd(tokenlist *tokens){
@@ -365,7 +361,7 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 return 0 is not valid
 return 1 is valid
 */
-int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file, char *in_file){
+int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file, char *in_file, bool foundPipe){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
 	int status;
@@ -386,7 +382,7 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 			}
 		}
 		// if(foundPipe){
-		// 	if(!doPipe(tokens, loc)){
+		// 	if(!doPipe(tokens, tokens->items[loc])){
 
 		// 	}
 		// }
