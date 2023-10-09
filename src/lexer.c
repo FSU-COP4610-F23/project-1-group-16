@@ -44,14 +44,14 @@ int main()
 		 */
 
 		char *input = get_input();
-		printf("whole input: %s\n", input); //will be deleted later
+		// printf("whole input: %s\n", input); //will be deleted later
 
 		tokenlist *tokens = get_tokens(input);
 		
-		for (int i = 0; i < tokens->size; i++) {
-			//this line is for testing and should be deleted later
-			printf("token %d: (%s)\n", i, tokens->items[i]); 
-		}
+		// for (int i = 0; i < tokens->size; i++) {
+		// 	//this line is for testing and should be deleted later
+		// 	printf("token %d: (%s)\n", i, tokens->items[i]); 
+		// }
 
 		tilde(tokens); //tilde expansion
 		
@@ -71,11 +71,9 @@ int main()
 
 			if(pid == 0) {
 				execv(tokens->items[0], tokens->items);
-				printf("Inside child process\n");
 			}
 			else if(pid > 0){
 				waitpid(pid, &status, WNOHANG);
-				printf("Inside parent process\n");
 				printf("[%d] [%d]\n", job_number, getpid());
 			}
 			else{
@@ -184,7 +182,6 @@ bool doublePipe(tokenlist *tokens, int loc1, int loc2){
         cmd2_3->items[place1] = 
             (char *)malloc(strlen(tokens->items[i]) + 1);
         cmd2_3->items[place1 + 1] = NULL;
-        // printf("loc is %d, i is %d\n", loc1, i);
         strcpy(cmd2_3->items[place1], tokens->items[i]);
         cmd2_3->size ++;
         place1++;
@@ -243,7 +240,6 @@ bool doublePipe(tokenlist *tokens, int loc1, int loc2){
             pid_t pid2 = fork();
             if(pid2 == 0){
                 //child 2
-                printf("child 2\n");
                 dup2(fd[0], STDIN_FILENO); //in from original fd[0]
                 dup2(fd2[1], STDOUT_FILENO); //out to new out fd[1]
                 close(fd2[0]);
@@ -296,8 +292,6 @@ bool doublePipe(tokenlist *tokens, int loc1, int loc2){
     return false; //code should NEVER reach this line
 }
 
-
-
 bool singlePipe(tokenlist *tokens, int loc1, int loc2){
 	//found pipe
 	//cause fork where child handles piping and parent waits for child
@@ -315,7 +309,6 @@ bool singlePipe(tokenlist *tokens, int loc1, int loc2){
 			pid_t pid2 = fork();
 			if(pid2 == 0){
 				//child 2
-				printf("child 2\n");
 				dup2(fd[1], STDOUT_FILENO); //print out is now to fd[1]
 				close(fd[0]);
 				close(fd[1]);
@@ -356,7 +349,6 @@ bool singlePipe(tokenlist *tokens, int loc1, int loc2){
 					newTokens->items[place] = 
 						(char *)malloc(strlen(tokens->items[i]) + 1);
 					newTokens->items[place + 1] = NULL;
-					printf("loc is %d, i is %d\n", loc1, i);
 					strcpy(newTokens->items[place], tokens->items[i]);
 					newTokens->size ++;
 					place++;
@@ -497,6 +489,7 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 	return true;
 
 }
+
 /*
 return 0 is not valid
 return 1 is valid
@@ -654,11 +647,9 @@ void tilde(tokenlist *tokens){
 
 // 	if(pid == 0) {
 // 		sleep(3);
-// 		printf("Child process\n");
 // 	}
 // 	else {
 // 		waitpid(pid, &status, WNOHANG);
-// 		printf("Parent process\n");
 // 	}
 // }
 
