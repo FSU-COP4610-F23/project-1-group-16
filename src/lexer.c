@@ -61,27 +61,48 @@ int main()
 			executed = true;
 		}
 
+		// Background Processing
+		if(strcmp(tokens->items[tokens->size-1], "&") == 0){ // OR TRY (tokens->size-1, "&")
+			int status;
+			int job_number = 1; // Initialize job number
+			// tokens->items[tokens->size-1] = NULL; // NULL out the &
+			
+			pid_t pid = fork();
 
-
-		// if(strcmp(tokens.items[tokens.size-1], "&") == 0){
-		// 	pid_t pid = fork();
-		// 	if(pid == 0){
-		// 		//child
-		// 		//print thing
-		// 		//execute cmd
-		// 		//print 
-		// 	}
-		// 	else if(pid > 0){
-		// 		//parent
-		// 		free(input);
-		// 		free_tokens(tokens);
-		// 		continue; //this should continue to top of while loop
-		// 	}
-		// 	else{
-		// 		perror("fork");
-		// 		exit(1);
-		// 	}
-		// }
+			if(pid == 0) {
+				execv(tokens->items[0], tokens->items);
+				printf("Inside child process\n");
+			}
+			else if(pid > 0){
+				waitpid(pid, &status, WNOHANG);
+				printf("Inside parent process\n");
+				/* Upon execution start, print [Job number] [cmd's PID].
+				Upon completion, print [Job number] + done [cmd's command line]. */
+				printf("[%d] [%d]\n", job_number, getpid());
+			}
+			else{
+				perror("fork");
+				exit(1);
+			}
+			
+			// pid_t pid = fork();
+			// if(pid == 0){
+			// 	//child
+			// 	//print thing
+			// 	//execute cmd
+			// 	//print 
+			// }
+			// else if(pid > 0){
+			// 	//parent
+			// 	free(input);
+			// 	free_tokens(tokens);
+			// 	continue; //this should continue to top of while loop
+			// }
+			// else{
+			// 	perror("fork");
+			// 	exit(1);
+			// }
+		}
 
 		int pipeLoc1 = -1;
 		int pipeLoc2 = -1;
@@ -630,7 +651,7 @@ void tilde(tokenlist *tokens){
 	}
 }
 
-// void background(){
+// void background(tokenlist *tokens){
 // 	int status;
 // 	pid_t pid = fork();
 
