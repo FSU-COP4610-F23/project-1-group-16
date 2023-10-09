@@ -30,12 +30,17 @@ int main()
 	char *out_file;
 	char *in_file;
 	bool foundPipe;
+	bool foundBackProcess;
+	int job_number = 0;
+	int backgroundStatus[10] = {0,0,0,0,0,0,0,0,0,0};
+	int backgroundPids[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 	while (1) {
 		bool executed = false;
 		inRedirection = false; 
 		outRedirection = false; 
 		foundPipe = false;
+		foundBackProcess = false;
 		
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
@@ -47,6 +52,16 @@ int main()
 		// printf("whole input: %s\n", input); //will be deleted later
 
 		tokenlist *tokens = get_tokens(input);
+
+		//see if any back pids are done
+		//if yes print them and open that slot
+		for(int i = 0; i < 10; i++){
+			if (WIFEXITED(backgroundStatus[i])) {
+            	if(WEXITSTATUS(backgroundStatus[i]) == 0){
+					printf("[%d] [%d] done\n", i+1, backgroundPids[i]);
+				}
+       		} 
+		}
 		
 		// for (int i = 0; i < tokens->size; i++) {
 		// 	//this line is for testing and should be deleted later
@@ -63,103 +78,158 @@ int main()
 
 		// Background Processing
 		if(strcmp(tokens->items[tokens->size-1], "&") == 0){
-			int status;
-			int job_number = 1; // Initialize job number
-			// tokens->items[tokens->size-1] = NULL; // NULL out the &
-			
-			pid_t pid = fork();
-
-			if(pid == 0) {
-				execv(tokens->items[0], tokens->items);
-			}
-			else if(pid > 0){
-				waitpid(pid, &status, WNOHANG);
-				printf("[%d] [%d]\n", job_number, getpid());
-			}
-			else{
-				perror("fork");
-				exit(1);
+			job_number++;
+			if(backgroundProcessing(tokens, &backgroundStatus, &backgroundPids)){
+				foundBackProcess = true;
 			}
 		}
-
-		int pipeLoc1 = -1;
-		int pipeLoc2 = -1;
-		for(int i = 0; i < tokens->size; i++){
-            if((strcmp(tokens->items[i], "|") == 0)){
-				if(pipeLoc1 == -1){
-					pipeLoc1 = i;
-				}
-				else{
-					pipeLoc2 = i;
-				}
-			}
-		}
-
-		// This is where we handle piping in main
-		// for(int i = 0; i < tokens->size; i++){
-		if(pipeLoc1 != -1){
-			//found pipe
-			//cause fork where child handles piping and parent waits for child
-			if(singlePipe(tokens, pipeLoc1, pipeLoc2)){
-				addCommandToValid(&history, input);
-			}
-			free(input);
-			free_tokens(tokens);
-			foundPipe = true;
-        }
-
-		if(!foundPipe){
-			for(int i = 1; i < tokens->size; i++){
-				if((strcmp(tokens->items[i], ">") == 0)){
-					// Output redirection
-					outRedirection = true;
-					out_file = tokens->items[i+1];
-					tokens->items[i] = NULL;
-					continue;
-				}
-				if((strcmp(tokens->items[i], "<") == 0)){
-					// Input redirection
-					inRedirection = true;
-					in_file = tokens->items[i+1];
-					tokens->items[i] = NULL;
-					continue;
-				}
-			}
-
-			// If internal command
-			if(!executed){
-				int internal = isInternal(tokens);
-				if(internal != 0){ // If found internal
-					if(internal == 1){ // If successful
-						addCommandToValid(&history, input);
+		if(!foundBackProcess){
+			int pipeLoc1 = -1;
+			int pipeLoc2 = -1;
+			for(int i = 0; i < tokens->size; i++){
+				if((strcmp(tokens->items[i], "|") == 0)){
+					if(pipeLoc1 == -1){
+						pipeLoc1 = i;
 					}
-					executed = true;
-				}
-				
-				if(internal == 3){ // If exit
-					displayLastThree(&history);
-					exit(0);
+					else{
+						pipeLoc2 = i;
+					}
 				}
 			}
 
-			// If external command
-			if(!executed){
-				// External command
-				if(handleExternal(tokens, inRedirection, 
-						outRedirection, 
-						out_file, in_file, 
-						foundPipe) == true){
+			// This is where we handle piping in main
+			// for(int i = 0; i < tokens->size; i++){
+			if(pipeLoc1 != -1){
+				//found pipe
+				//cause fork where child handles piping and parent waits for child
+				if(singlePipe(tokens, pipeLoc1, pipeLoc2)){
 					addCommandToValid(&history, input);
 				}
+				free(input);
+				free_tokens(tokens);
+				foundPipe = true;
 			}
+
+			if(!foundPipe){
+				for(int i = 1; i < tokens->size; i++){
+					if((strcmp(tokens->items[i], ">") == 0)){
+						// Output redirection
+						outRedirection = true;
+						out_file = tokens->items[i+1];
+						tokens->items[i] = NULL;
+						continue;
+					}
+					if((strcmp(tokens->items[i], "<") == 0)){
+						// Input redirection
+						inRedirection = true;
+						in_file = tokens->items[i+1];
+						tokens->items[i] = NULL;
+						continue;
+					}
+				}
+
+				// If internal command
+				if(!executed){
+					int internal = isInternal(tokens);
+					if(internal != 0){ // If found internal
+						if(internal == 1){ // If successful
+							addCommandToValid(&history, input);
+						}
+						executed = true;
+					}
+					
+					if(internal == 3){ // If exit
+						displayLastThree(&history);
+						exit(0);
+					}
+				}
+
+				// If external command
+				if(!executed){
+					// External command
+					if(handleExternal(tokens, inRedirection, 
+							outRedirection, 
+							out_file, in_file, 
+							foundPipe) == true){
+						addCommandToValid(&history, input);
+					}
+				}
+				
+				free(input);
+				free_tokens(tokens);
 			
-			free(input);
-			free_tokens(tokens);
+			}
 		}
 	}
 
 	return 0;
 } // END OF MAIN
+
+bool backgroundProcessing(tokenlist *tokens, int backgroundStatus[], int backgroundPids[]){
+	pid_t pid1 = fork();
+	if(pid1 == 0){
+		int status;
+		tokens->items[tokens->size-1] = NULL; // NULL out the &
+		
+		pid_t pid2 = fork();
+
+		if(pid2 == 0) {
+			int job_number = -1;
+			for(int i = 0; i < 10; i++){
+				if(backgroundStatus[i] == 0){
+					backgroundStatus[status];
+					backgroundPids[pid2];
+					job_number = i;
+					break; //break out of for loop
+				}
+			}
+			if(job_number == -1){
+				printf("Too many jobs running in background\n");
+				exit(1);
+			}
+
+			tokenlist * cmd = new_tokenlist();
+			for(int i = 0; i < tokens->size - 1; i++){
+				cmd->items = 
+					(char **)realloc(cmd->items, (i + 2) * sizeof(char*));
+				cmd->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
+				cmd->items[i + 1] = NULL;
+				strcpy(cmd->items[i], tokens->items[i]);
+				cmd->size ++;
+			}
+			tokens->items = (char **)realloc(tokens->items, (tokens->size+1) * sizeof(char*));
+			tokens->items[tokens->size-1] = NULL;
+			tokens->size--;
+		
+			// execv(cmd->items[0], cmd->items);
+			printf("[%d] [%d]\n", job_number+1, getpid());
+			return false;
+			
+		}
+		else if(pid2 > 0){
+			waitpid(pid2, &status, WNOHANG);
+			// printf("[%d] [%d] done ", job_number, getpid());
+			// for (int i = 0; i < tokens->size; i++) {
+			// 	//this line is for testing and should be deleted later
+			// 	printf("%s ", tokens->items[i]); 
+			// }
+			printf("\n");
+			return true;
+		}
+		else{
+			perror("fork");
+			exit(1);
+		}
+	}
+	else if(pid1 > 0){
+		//nothing
+		return true;
+	}
+	else{
+		perror("fork");
+		exit(1);
+	}
+}
 
 bool doublePipe(tokenlist *tokens, int loc1, int loc2){
 

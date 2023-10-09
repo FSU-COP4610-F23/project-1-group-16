@@ -31,3 +31,4 @@ bool doOutRedirection(tokenlist *tokens, char *out_file);
 bool doInRedirection(tokenlist *tokens, char *in_file);
 bool singlePipe(tokenlist *tokens, int loc1, int loc2);
 bool doublePipe(tokenlist *tokens, int loc1, int loc2);
+bool backgroundProcessing(tokenlist *tokens, int backgroundStatus[], int backgroundPids[]);
