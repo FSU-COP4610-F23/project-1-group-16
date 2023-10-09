@@ -31,6 +31,5 @@ void addCommandToValid(commandHistory *history, char *command);
 void displayLastThree(commandHistory *history);
 bool doOutRedirection(tokenlist *tokens, char *out_file);
 bool doInRedirection(tokenlist *tokens, char *in_file);
-void singlePipe(tokenlist *tokens, int loc1, int loc2);
-void doublePipe(tokenlist *tokens, int loc1, int loc2);
-//void background(tokenlist *tokens);
+bool singlePipe(tokenlist *tokens, int loc1, int loc2);
+bool doublePipe(tokenlist *tokens, int loc1, int loc2);

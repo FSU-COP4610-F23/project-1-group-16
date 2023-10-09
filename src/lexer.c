@@ -1,19 +1,10 @@
 /*
 Questions for TA:
-are we allowed to use setenv - YES
 jobs
-piping
 background processing
-timeout executable
-
-parent can know if child successfully executed execv with WEXITSTATUS
-
-
 
 Need: 
-exit printing last 3 valid
 background processing (Amelia)
-double pipe (becky)
 jobs (Olivia)
 Readme
 */
@@ -111,7 +102,9 @@ int main()
 		if(pipeLoc1 != -1){
 			//found pipe
 			//cause fork where child handles piping and parent waits for child
-			singlePipe(tokens, pipeLoc1, pipeLoc2); 
+			if(singlePipe(tokens, pipeLoc1, pipeLoc2)){
+				addCommandToValid(&history, input);
+			}
 			free(input);
 			free_tokens(tokens);
 			foundPipe = true;
@@ -170,164 +163,146 @@ int main()
 	return 0;
 } // END OF MAIN
 
-void doublePipe(tokenlist *tokens, int loc1, int loc2){
+bool doublePipe(tokenlist *tokens, int loc1, int loc2){
 
+    tokenlist *cmd1 = new_tokenlist();
+    for(int i = 0; i < loc1; i++){
+        cmd1->items = 
+            (char **)realloc(cmd1->items, (i + 2) * sizeof(char*));
+        cmd1->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
+        cmd1->items[i + 1] = NULL;
+        strcpy(cmd1->items[i], tokens->items[i]);
+        cmd1->size ++;
+    }
+    
+    //put 2nd and 3rd command into cmd2_3
+    tokenlist *cmd2_3 = new_tokenlist();
+    int place1 = 0;
+    for(int i = loc1+1; i < tokens->size; i++){
+        cmd2_3->items = (char **)realloc(cmd2_3->items, 
+                (place1 + 2) * sizeof(char*));
+        cmd2_3->items[place1] = 
+            (char *)malloc(strlen(tokens->items[i]) + 1);
+        cmd2_3->items[place1 + 1] = NULL;
+        // printf("loc is %d, i is %d\n", loc1, i);
+        strcpy(cmd2_3->items[place1], tokens->items[i]);
+        cmd2_3->size ++;
+        place1++;
+    }
 
-	tokenlist *cmd1 = new_tokenlist();
-	for(int i = 0; i < loc1; i++){
-		cmd1->items = 
-			(char **)realloc(cmd1->items, (i + 2) * sizeof(char*));
-		cmd1->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
-		cmd1->items[i + 1] = NULL;
-		strcpy(cmd1->items[i], tokens->items[i]);
-		cmd1->size ++;
-	}
-	
-	//put the first command into newTokens
-	tokenlist *cmd2_3 = new_tokenlist();
-	int place1 = 0;
-	for(int i = loc1+1; i < tokens->size; i++){
-		cmd2_3->items = (char **)realloc(cmd2_3->items, 
-				(place1 + 2) * sizeof(char*));
-		cmd2_3->items[place1] = 
-			(char *)malloc(strlen(tokens->items[i]) + 1);
-		cmd2_3->items[place1 + 1] = NULL;
-		// printf("loc is %d, i is %d\n", loc1, i);
-		strcpy(cmd2_3->items[place1], tokens->items[i]);
-		cmd2_3->size ++;
-		place1++;
-	}
+    //put the first command into cmd2
+    tokenlist *cmd2 = new_tokenlist();
+    for(int i = 0; i < loc1; i++){
+        cmd2->items = (char **)realloc(cmd2->items, 
+                (i + 2) * sizeof(char*));
+        cmd2->items[i] = (char *)malloc(strlen(cmd2_3->items[i]) + 1);
+        cmd2->items[i + 1] = NULL;
+        strcpy(cmd2->items[i], cmd2_3->items[i]);
+        cmd2->size ++;
+    }
 
-	//put the first command into cmd2
-	tokenlist *cmd2 = new_tokenlist();
-	for(int i = 0; i < loc1; i++){
-		cmd2->items = (char **)realloc(cmd2->items, 
-				(i + 2) * sizeof(char*));
-		cmd2->items[i] = (char *)malloc(strlen(cmd2_3->items[i]) + 1);
-		cmd2->items[i + 1] = NULL;
-		strcpy(cmd2->items[i], cmd2_3->items[i]);
-		cmd2->size ++;
-	}
+    //get only the tokens needed into newTokens
+    //get command 3 into cmd3
+    tokenlist *cmd3 = new_tokenlist();
+    int place2 = 0;
+    for(int i = loc1+1; i < cmd2_3->size; i++){
+        cmd3->items = (char **)realloc(cmd3->items, 
+                (place2 + 2) * sizeof(char*));
+        cmd3->items[place2] = 
+            (char *)malloc(strlen(cmd2_3->items[i]) + 1);
+        cmd3->items[place2 + 1] = NULL;
+        strcpy(cmd3->items[place2], cmd2_3->items[i]);
+        cmd3->size ++;
+        place2++;
+    }
 
-	//get only the tokens needed into newTokens
-	//get command 3 into cmd3
-	tokenlist *cmd3 = new_tokenlist();
-	int place2 = 0;
-	for(int i = loc1+1; i < cmd2_3->size; i++){
-		cmd3->items = (char **)realloc(cmd3->items, 
-				(place2 + 2) * sizeof(char*));
-		cmd3->items[place2] = 
-			(char *)malloc(strlen(cmd2_3->items[i]) + 1);
-		cmd3->items[place2 + 1] = NULL;
-		printf("loc is %d, i is %d\n", loc1, i);
-		strcpy(cmd3->items[place2], cmd2_3->items[i]);
-		cmd3->size ++;
-		place2++;
-	}
+    pid_t pid = fork();
+    if(pid == 0){
+        int fd[2];
+        pipe(fd);
+        int fd2[2];
+        pipe(fd2);
 
+        pid_t pid1 = fork();
+        if(pid1 == 0){
+            dup2(fd[1], STDOUT_FILENO); //out to fd[1]
+            close(fd[0]);
+            close(fd[1]);
+            close(fd2[0]);
+            close(fd2[1]);
 
-	printf("\n");
-	for (int i = 0; i < cmd2_3->size; i++) {
-		//this line is for testing and should be deleted later
-		printf("cmd2_3 token %d: (%s)\n", i, cmd2_3->items[i]); 
-	}
-	printf("\n");
-	for (int i = 0; i < cmd1->size; i++) {
-		//this line is for testing and should be deleted later
-		printf("cmd1 token %d: (%s)\n", i, cmd1->items[i]); 
-	}
-	printf("\n");
-	for (int i = 0; i < cmd2->size; i++) {
-		//this line is for testing and should be deleted later
-		printf("cmd2 token %d: (%s)\n", i, cmd2->items[i]); 
-	}
-	printf("\n");
-	for (int i = 0; i < cmd3->size; i++) {
-		//this line is for testing and should be deleted later
-		printf("cmd3 token %d: (%s)\n", i, cmd3->items[i]); 
-	}
+            cmd1->items[0] = pathSearch(cmd1->items[0]);
+            if (execv(cmd1->items[0], cmd1->items) == -1) { 
+                perror("execv");
+                exit(1);
+            }
+        }
 
+        else if (pid1 > 0){
+            waitpid(pid1, NULL, 0);
+            pid_t pid2 = fork();
+            if(pid2 == 0){
+                //child 2
+                printf("child 2\n");
+                dup2(fd[0], STDIN_FILENO); //in from original fd[0]
+                dup2(fd2[1], STDOUT_FILENO); //out to new out fd[1]
+                close(fd2[0]);
+                close(fd2[1]);
+                close(fd[0]);
+                close(fd[1]);
 
-	
-	int saveOut = dup(STDOUT_FILENO);
-	int saveIn = dup(STDIN_FILENO);
+                cmd2->items[0] = pathSearch(cmd2->items[0]);
+                if (execv(cmd2->items[0], cmd2->items) == -1) { 
+                    perror("execv");
+                    exit(1);
+                }
+            }
+            else{
+                //parent 2
+                dup2(fd2[0], STDIN_FILENO); //in from fd2[0]
+                // dup2(saveOut, STDOUT_FILENO); //out to original out
+                close(fd2[0]);
+                close(fd2[1]);
+                close(fd[0]);
+                close(fd[1]);
 
-	pid_t pid = fork();
-	if(pid == 0){
-		int fd[2];
-		pipe(fd);
-		dup2(fd[1], STDOUT_FILENO); //out to fd[1]
-		close(fd[0]);
-		close(fd[1]);
+                cmd3->items[0] = pathSearch(cmd3->items[0]);
+                if (execv(cmd3->items[0], cmd3->items) == -1) { 
+                    perror("execv");
+                    exit(1);
+                }
+            }
+        }
+        else{
+            perror("fork");
+            exit(1);
+        }
 
-		cmd1->items[0] = pathSearch(cmd1->items[0]);
-		if (execv(cmd1->items[0], cmd1->items) == -1) { 
-			perror("execv");
-			exit(1);
-		}
-
-
-		pid_t pid1 = fork();
-		if(pid1 == 0){
-			//child 1
-			int fd2[2];
-			pipe(fd2);
-
-			
-			pid_t pid2 = fork();
-			if(pid2 == 0){
-				//child 2
-				printf("child 2\n");
-				dup2(fd[0], STDIN_FILENO); //in from original fd[0]
-				dup2(fd2[1], STDOUT_FILENO); //out to new out fd[1]
-				close(fd2[0]);
-				close(fd2[1]);
-
-				cmd2->items[0] = pathSearch(cmd2->items[0]);
-				if (execv(cmd2->items[0], cmd2->items) == -1) { 
-					perror("execv");
-					exit(1);
-				}
-			}
-			else{
-				//parent 2
-				dup2(fd2[0], STDIN_FILENO); //in from fd2[0]
-			 	dup2(saveOut, STDOUT_FILENO); //out to original out
-				close(fd2[0]);
-				close(fd2[1]);
-				printf("Line 282\n");
-
-
-				cmd3->items[0] = pathSearch(cmd3->items[0]);
-				if (execv(cmd3->items[0], cmd3->items) == -1) { 
-					perror("execv");
-					exit(1);
-				}
-			}
-		}
-		else if (pid1 > 0){
-			//parent 1 
-			//wait for child
-			waitpid(pid1, NULL, 0);
-		}
-		else{
-			perror("fork");
-			exit(1);
-		}
-
-
-
-	}
-	else{
-		waitpid(pid, NULL, 0);
-	}
+    }
+    else{
+        //parent keeping everything the same
+        free_tokens(cmd1);
+        free_tokens(cmd2);
+        free_tokens(cmd3);
+        free_tokens(cmd2_3);
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            return true;
+        } else {
+            return false; // Child process did not exit normally
+        }
+    }
+    return false; //code should NEVER reach this line
 }
 
-void singlePipe(tokenlist *tokens, int loc1, int loc2){
+
+
+bool singlePipe(tokenlist *tokens, int loc1, int loc2){
 	//found pipe
 	//cause fork where child handles piping and parent waits for child
 	if(loc2 != -1){
-		doublePipe(tokens, loc1, loc2);
+		return(doublePipe(tokens, loc1, loc2));
 	}
 	else{
 		pid_t pid1 = fork();
@@ -397,13 +372,20 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 		else if (pid1 > 0){
 			//parent 1 
 			//wait for child
-			waitpid(pid1, NULL, 0);
+			int status;
+			waitpid(pid1, &status, 0);
+			if (WIFEXITED(status)) {
+				return !WEXITSTATUS(status);
+			} else {
+				return false; // Child process did not exit normally
+			}
 		}
 		else{
 			perror("fork");
 			exit(1);
 		}
 	}
+	return false; //Should NEVER hit here
 }
 
 void addCommandToValid(commandHistory *history, char *command){
