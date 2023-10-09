@@ -5,7 +5,7 @@
 
 ## Group Members
 - **Rebecca Anestad**: rba20a@fsu.edu
-- **Olivia Judah**: @fsu.edu
+- **Olivia Judah**: ogj21@fsu.edu
 - **Amelia Sieg**: ats20b@fsu.edu
 ## Division of Labor
 
