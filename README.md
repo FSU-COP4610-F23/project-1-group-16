@@ -4,94 +4,93 @@
 [Description]
 
 ## Group Members
-- **John Doe**: jd19@fsu.edu
-- **Jane Smith**: js19@fsu.edu
-- **Alex Brown**: ab19@fsu.edu
+- **Rebecca Anestad**: rba20a@fsu.edu
+- **Olivia Judah**: @fsu.edu
+- **Amelia Sieg**: ats20b@fsu.edu
 ## Division of Labor
 
 ### Part 1: Prompt
-- **Responsibilities**: [Description]
-- **Assigned to**: John Doe
+- **Responsibilities**: [Print the prompt when it should be printed, including user, machine and pwd]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ### Part 2: Environment Variables
-- **Responsibilities**: [Description]
-- **Assigned to**: Jane Smith
+- **Responsibilities**: [Ensure that all environment variables are with getenv()]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ### Part 3: Tilde Expansion
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
+- **Responsibilities**: [Check if a ~ appears in the tokens. If it does, expand it to the home variable which is the home directory.]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ### Part 4: $PATH Search
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, Jane Smith
+- **Responsibilities**: [Expand the path variables, which is multiple directories, and go through each directory. If the correct path directory is found, then return it.]
+- **Assigned to**: Rebecca Anestad, Olivia Judah
 
 ### Part 5: External Command Execution
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, Jane Smith
+- **Responsibilities**: [Fork to create a child process and then use path search to find the correct command. If it is found, use execv to execute the correct command. Other wise return error. ]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ### Part 6: I/O Redirection
-- **Responsibilities**: [Description]
-- **Assigned to**: Jane Smith
+- **Responsibilities**: [Replace the keyboard with input from the specified file and redirect output to a designated file.]
+- **Assigned to**: Rebecca Anestad, Amelia Sieg
 
 ### Part 7: Piping
-- **Responsibilities**: [Description]
-- **Assigned to**: John Doe
+- **Responsibilities**: [Simultaneous execution of multiple commands, changing the input and output of each respectivly so that the output of one command is the input of the next command]
+- **Assigned to**: Rebecca Anestad
 
 ### Part 8: Background Processing
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, John Doe
+- **Responsibilities**: [Allows the shell to execute external commands without waiting for their execution. Also keeps track of their status.]
+- **Assigned to**: Olivia Judah, Amelia Sieg
 
 ### Part 9: Internal Command Execution
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
+- **Responsibilities**: [Built-in functions such as echo, cd, exit, and jobs.]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ### Part 10: External Timeout Executable
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown, Jane Smith
+- **Responsibilities**: [Created a new project, mytimeout, that executes the command passed in and waits the specified amount of time before terminating.]
+- **Assigned to**: Rebecca Anestad
 
 ### Extra Credit
-- **Responsibilities**: [Description]
-- **Assigned to**: Alex Brown
+- **Responsibilities**: [Shell-ception executes our shell from within a running shell process repeatedly]
+- **Assigned to**: Rebecca Anestad, Olivia Judah, Amelia Sieg
 
 ## File Listing
 ```
 shell/
 │
 ├── src/
-│ ├── main.c
-│ └── shell.c
-│
+│ └── lexer.c
+| └── mytimeout/
+|   └── mytimeout.c
+|
 ├── include/
-│ └── shell.h
+│ └── lexer.h
 │
 ├── README.md
 └── Makefile
 ```
 ## How to Compile & Execute
-
+To clean work space, run "make clean"
+To compile all executables run "make" 
+To run the shell executable run "make run"
 ### Requirements
-- **Compiler**: e.g., `gcc` for C/C++, `rustc` for Rust.
-- **Dependencies**: List any libraries or frameworks necessary (rust only).
+- **Compiler**: `gcc
 
 ### Compilation
-For a C/C++ example:
 ```bash
 make
 ```
-This will build the executable in ...
+This will build the executable in bin
 ### Execution
 ```bash
 make run
 ```
-This will run the program ...
+This will run the program
 
 ## Bugs
 - **Bug 1**: This is bug 1.
-- **Bug 2**: This is bug 2.
-- **Bug 3**: This is bug 3.
 
 ## Extra Credit
-- **Extra Credit 1**: [Extra Credit Option]
+- **Extra Credit 1**: [Shell-ception]
 - **Extra Credit 2**: [Extra Credit Option]
 - **Extra Credit 3**: [Extra Credit Option]
 
