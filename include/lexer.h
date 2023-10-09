@@ -24,13 +24,13 @@ char * pathSearch (char * token);
 int isInternal(tokenlist *tokens);
 int handleInternal(tokenlist *tokens);
 void echo(tokenlist *tokens);
-int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file, char *in_file, bool foundPipe);
+int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, 
+        char *out_file, char *in_file, bool foundPipe);
 int cd(tokenlist *tokens);
 void addCommandToValid(commandHistory *history, char *command);
 void displayLastThree(commandHistory *history);
 bool doOutRedirection(tokenlist *tokens, char *out_file);
 bool doInRedirection(tokenlist *tokens, char *in_file);
-bool doPipe(tokenlist *tokens, int loc);
 void singlePipe(tokenlist *tokens, int loc1, int loc2);
 void doublePipe(tokenlist *tokens, int loc1, int loc2);
 //void background(tokenlist *tokens);

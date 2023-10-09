@@ -7,6 +7,15 @@ background processing
 timeout executable
 
 parent can know if child successfully executed execv with WEXITSTATUS
+
+
+
+Need: 
+exit printing last 3 valid
+background processing (Amelia)
+double pipe (becky)
+jobs (Olivia)
+Readme
 */
 
 #include "lexer.h"
@@ -62,7 +71,7 @@ int main()
 		}
 
 		// Background Processing
-		if(strcmp(tokens->items[tokens->size-1], "&") == 0){ // OR TRY (tokens->size-1, "&")
+		if(strcmp(tokens->items[tokens->size-1], "&") == 0){
 			int status;
 			int job_number = 1; // Initialize job number
 			// tokens->items[tokens->size-1] = NULL; // NULL out the &
@@ -76,32 +85,12 @@ int main()
 			else if(pid > 0){
 				waitpid(pid, &status, WNOHANG);
 				printf("Inside parent process\n");
-				/* Upon execution start, print [Job number] [cmd's PID].
-				Upon completion, print [Job number] + done [cmd's command line]. */
 				printf("[%d] [%d]\n", job_number, getpid());
 			}
 			else{
 				perror("fork");
 				exit(1);
 			}
-			
-			// pid_t pid = fork();
-			// if(pid == 0){
-			// 	//child
-			// 	//print thing
-			// 	//execute cmd
-			// 	//print 
-			// }
-			// else if(pid > 0){
-			// 	//parent
-			// 	free(input);
-			// 	free_tokens(tokens);
-			// 	continue; //this should continue to top of while loop
-			// }
-			// else{
-			// 	perror("fork");
-			// 	exit(1);
-			// }
 		}
 
 		int pipeLoc1 = -1;
@@ -121,7 +110,7 @@ int main()
 		// for(int i = 0; i < tokens->size; i++){
 		if(pipeLoc1 != -1){
 			//found pipe
-			//cause fork where child handles piping and parent waits for child to finish
+			//cause fork where child handles piping and parent waits for child
 			singlePipe(tokens, pipeLoc1, pipeLoc2); 
 			free(input);
 			free_tokens(tokens);
@@ -165,7 +154,10 @@ int main()
 			// If external command
 			if(!executed){
 				// External command
-				if(handleExternal(tokens, inRedirection, outRedirection, out_file, in_file, foundPipe) == true){
+				if(handleExternal(tokens, inRedirection, 
+						outRedirection, 
+						out_file, in_file, 
+						foundPipe) == true){
 					addCommandToValid(&history, input);
 				}
 			}
@@ -179,63 +171,161 @@ int main()
 } // END OF MAIN
 
 void doublePipe(tokenlist *tokens, int loc1, int loc2){
-	int fd[2];
-	pipe(fd);
+
+
+	tokenlist *cmd1 = new_tokenlist();
+	for(int i = 0; i < loc1; i++){
+		cmd1->items = 
+			(char **)realloc(cmd1->items, (i + 2) * sizeof(char*));
+		cmd1->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
+		cmd1->items[i + 1] = NULL;
+		strcpy(cmd1->items[i], tokens->items[i]);
+		cmd1->size ++;
+	}
+	
+	//put the first command into newTokens
+	tokenlist *cmd2_3 = new_tokenlist();
+	int place1 = 0;
+	for(int i = loc1+1; i < tokens->size; i++){
+		cmd2_3->items = (char **)realloc(cmd2_3->items, 
+				(place1 + 2) * sizeof(char*));
+		cmd2_3->items[place1] = 
+			(char *)malloc(strlen(tokens->items[i]) + 1);
+		cmd2_3->items[place1 + 1] = NULL;
+		// printf("loc is %d, i is %d\n", loc1, i);
+		strcpy(cmd2_3->items[place1], tokens->items[i]);
+		cmd2_3->size ++;
+		place1++;
+	}
+
+	//put the first command into cmd2
+	tokenlist *cmd2 = new_tokenlist();
+	for(int i = 0; i < loc1; i++){
+		cmd2->items = (char **)realloc(cmd2->items, 
+				(i + 2) * sizeof(char*));
+		cmd2->items[i] = (char *)malloc(strlen(cmd2_3->items[i]) + 1);
+		cmd2->items[i + 1] = NULL;
+		strcpy(cmd2->items[i], cmd2_3->items[i]);
+		cmd2->size ++;
+	}
+
+	//get only the tokens needed into newTokens
+	//get command 3 into cmd3
+	tokenlist *cmd3 = new_tokenlist();
+	int place2 = 0;
+	for(int i = loc1+1; i < cmd2_3->size; i++){
+		cmd3->items = (char **)realloc(cmd3->items, 
+				(place2 + 2) * sizeof(char*));
+		cmd3->items[place2] = 
+			(char *)malloc(strlen(cmd2_3->items[i]) + 1);
+		cmd3->items[place2 + 1] = NULL;
+		printf("loc is %d, i is %d\n", loc1, i);
+		strcpy(cmd3->items[place2], cmd2_3->items[i]);
+		cmd3->size ++;
+		place2++;
+	}
+
+
+	printf("\n");
+	for (int i = 0; i < cmd2_3->size; i++) {
+		//this line is for testing and should be deleted later
+		printf("cmd2_3 token %d: (%s)\n", i, cmd2_3->items[i]); 
+	}
+	printf("\n");
+	for (int i = 0; i < cmd1->size; i++) {
+		//this line is for testing and should be deleted later
+		printf("cmd1 token %d: (%s)\n", i, cmd1->items[i]); 
+	}
+	printf("\n");
+	for (int i = 0; i < cmd2->size; i++) {
+		//this line is for testing and should be deleted later
+		printf("cmd2 token %d: (%s)\n", i, cmd2->items[i]); 
+	}
+	printf("\n");
+	for (int i = 0; i < cmd3->size; i++) {
+		//this line is for testing and should be deleted later
+		printf("cmd3 token %d: (%s)\n", i, cmd3->items[i]); 
+	}
+
+
+	
+	int saveOut = dup(STDOUT_FILENO);
+	int saveIn = dup(STDIN_FILENO);
+
 	pid_t pid = fork();
 	if(pid == 0){
-
-		tokenlist *newTokens2 = new_tokenlist();
-		for(int i = 0; i < loc1; i++){
-			newTokens2->items = (char **)realloc(newTokens2->items, (i + 2) * sizeof(char*));
-			newTokens2->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
-			newTokens2->items[i + 1] = NULL;
-			strcpy(newTokens2->items[i], tokens->items[i]);
-			newTokens2->size ++;
-		}
-		
-		//put the first command into newTokens
-		tokenlist *newTokens = new_tokenlist();
-		int place = 0;
-		for(int i = loc1+1; i < tokens->size; i++){
-			newTokens->items = (char **)realloc(newTokens->items, (place + 2) * sizeof(char*));
-			newTokens->items[place] = (char *)malloc(strlen(tokens->items[i]) + 1);
-			newTokens->items[place + 1] = NULL;
-			// printf("loc is %d, i is %d\n", loc1, i);
-			strcpy(newTokens->items[place], tokens->items[i]);
-			newTokens->size ++;
-			place++;
-		}
-
-		for (int i = 0; i < newTokens2->size; i++) {
-			//this line is for testing and should be deleted later
-			printf("Line 184 token %d: (%s)\n", i, newTokens2->items[i]); 
-		}
-		dup2(fd[1], STDOUT_FILENO);
+		int fd[2];
+		pipe(fd);
+		dup2(fd[1], STDOUT_FILENO); //out to fd[1]
 		close(fd[0]);
 		close(fd[1]);
 
-		newTokens2->items[0] = pathSearch(newTokens2->items[0]);
-		if (execv(newTokens2->items[0], newTokens2->items) == -1) { 
+		cmd1->items[0] = pathSearch(cmd1->items[0]);
+		if (execv(cmd1->items[0], cmd1->items) == -1) { 
 			perror("execv");
 			exit(1);
 		}
 
 
-		printf("Line 197\n");
-		singlePipe(newTokens, loc2 - loc1, -1);
-		printf("Line 199\n");
+		pid_t pid1 = fork();
+		if(pid1 == 0){
+			//child 1
+			int fd2[2];
+			pipe(fd2);
+
+			
+			pid_t pid2 = fork();
+			if(pid2 == 0){
+				//child 2
+				printf("child 2\n");
+				dup2(fd[0], STDIN_FILENO); //in from original fd[0]
+				dup2(fd2[1], STDOUT_FILENO); //out to new out fd[1]
+				close(fd2[0]);
+				close(fd2[1]);
+
+				cmd2->items[0] = pathSearch(cmd2->items[0]);
+				if (execv(cmd2->items[0], cmd2->items) == -1) { 
+					perror("execv");
+					exit(1);
+				}
+			}
+			else{
+				//parent 2
+				dup2(fd2[0], STDIN_FILENO); //in from fd2[0]
+			 	dup2(saveOut, STDOUT_FILENO); //out to original out
+				close(fd2[0]);
+				close(fd2[1]);
+				printf("Line 282\n");
+
+
+				cmd3->items[0] = pathSearch(cmd3->items[0]);
+				if (execv(cmd3->items[0], cmd3->items) == -1) { 
+					perror("execv");
+					exit(1);
+				}
+			}
+		}
+		else if (pid1 > 0){
+			//parent 1 
+			//wait for child
+			waitpid(pid1, NULL, 0);
+		}
+		else{
+			perror("fork");
+			exit(1);
+		}
+
 
 
 	}
 	else{
-		
-		wait(pid);
+		waitpid(pid, NULL, 0);
 	}
 }
 
 void singlePipe(tokenlist *tokens, int loc1, int loc2){
 	//found pipe
-	//cause fork where child handles piping and parent waits for child to finish
+	//cause fork where child handles piping and parent waits for child
 	if(loc2 != -1){
 		doublePipe(tokens, loc1, loc2);
 	}
@@ -251,29 +341,32 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 			if(pid2 == 0){
 				//child 2
 				printf("child 2\n");
-				dup2(fd[1], STDOUT_FILENO);
+				dup2(fd[1], STDOUT_FILENO); //print out is now to fd[1]
 				close(fd[0]);
 				close(fd[1]);
 				
 				//put the first command into newTokens
 				tokenlist *newTokens = new_tokenlist();
 				for(int i = 0; i < loc1; i++){
-					newTokens->items = (char **)realloc(newTokens->items, (i + 2) * sizeof(char*));
-					newTokens->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
+					newTokens->items = 
+							(char **)realloc(newTokens->items, 
+							(i + 2) * sizeof(char*));
+					newTokens->items[i] = 
+						(char *)malloc(strlen(tokens->items[i]) + 1);
 					newTokens->items[i + 1] = NULL;
 					strcpy(newTokens->items[i], tokens->items[i]);
 					newTokens->size ++;
 				}
 
 				newTokens->items[0] = pathSearch(newTokens->items[0]);
-				if (execv(newTokens->items[0], newTokens->items) == -1) { 
+				if (execv(newTokens->items[0], newTokens->items) == -1){
 					perror("execv");
 					exit(1);
 				}
 			}
 			else{
 				//parent 2
-				dup2(fd[0], STDIN_FILENO);
+				dup2(fd[0], STDIN_FILENO); //in is now from fd[0]
 				close(fd[0]);
 				close(fd[1]);
 
@@ -282,8 +375,11 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 				tokenlist *newTokens = new_tokenlist();
 				int place = 0;
 				for(int i = loc1+1; i < tokens->size; i++){
-					newTokens->items = (char **)realloc(newTokens->items, (place + 2) * sizeof(char*));
-					newTokens->items[place] = (char *)malloc(strlen(tokens->items[i]) + 1);
+					newTokens->items = 
+						(char **)realloc(newTokens->items, 
+						(place + 2) * sizeof(char*));
+					newTokens->items[place] = 
+						(char *)malloc(strlen(tokens->items[i]) + 1);
 					newTokens->items[place + 1] = NULL;
 					printf("loc is %d, i is %d\n", loc1, i);
 					strcpy(newTokens->items[place], tokens->items[i]);
@@ -292,7 +388,7 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 				}
 
 				newTokens->items[0] = pathSearch(newTokens->items[0]);
-				if (execv(newTokens->items[0], newTokens->items) == -1) { 
+				if (execv(newTokens->items[0], newTokens->items) == -1){
 					perror("execv");
 					exit(1);
 				}
@@ -310,90 +406,8 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 	}
 }
 
-
-bool doPipe(tokenlist *tokens, int loc){
-	printf("inside doPipe\n");
-	
-	// create array for pipe file descriptors
-	int fd[2];
-	
-	// create read and write ends of pipe
-	pipe(fd); // Could've done this - int pipe(int fd[2]);
-	printf("fd[0] = %d\nfd[1] = %d\n", fd[0], fd[1]); // fd[0] = 3, fd[1] = 4
-	
-	// create new process
-	pid_t pid = fork();
-
-	// child process
-	if(pid == 0) {
-		printf("inside child\n");
-
-		dup2(fd[1], STDOUT_FILENO);
-		close(fd[0]);
-		close(fd[1]);
-		// execv here somewhere?
-		exit(0);
-		
-		// // initialize command
-		// char *x[2];
-		// x[0] = tokens->items[0];
-		// x[1] = NULL;
-
-		// // replace stdout with write end of pipe
-		// dup2(fd[1], STDOUT_FILENO);
-		
-		// // close read end of pipe
-		// close(fd[0]);
-		
-		// // close duplicate reference to write end of pipe
-		// close(fd[1]);
-
-		for(int i = loc; i > 0; i--){
-			free(tokens->items);
-			tokens->size--;
-		}
-		if (execv(tokens->items[0], tokens->items) == -1) { 
-			perror("execv");
-			exit(1);
-		}
-		// execvp(x[0], x); // Can't use
-	}
-	// parent process
-	else {
-		printf("inside parent\n");
-
-		dup2(fd[0], STDIN_FILENO);
-		close(fd[0]);
-		close(fd[1]);
-		exit(0);
-
-		// // initialize command
-		// char *x[3];
-		// x[0] = "wc";
-		// x[1] = "-l";
-		// x[2] = NULL;
-
-		// // replace stdin with read end of pipe
-		// dup2(fd[0], STDIN_FILENO);
-		
-		// // close read end of pipe
-		// close(fd[0]);
-		
-		// // close duplicate reference to write end of pipe
-		// close(fd[1]);
-
-		// // if (execv(tokens->items[loc], tokens->items+loc) == -1) { 
-		// // 	perror("execv");
-		// // 	exit(1);
-		// // }
-
-		// // remember to use execv() instead of execvp() for the project!
-		// execvp(x[0], x);
-	}
-}
-
 void addCommandToValid(commandHistory *history, char *command){
-	if(history->count<3){ //if we don't have three commands yet, simple add it on
+	if(history->count<3){
 		strcpy(history->commands[history->count], command);
 		history->count++;
 	}
@@ -440,7 +454,7 @@ int isInternal(tokenlist *tokens){
 int cd(tokenlist *tokens){
 	if (chdir(tokens->items[1]) == 0){
 		char s[200]; //200 should be max length of PWD
-		setenv("PWD", getcwd(s, 200), 1); //1 means if PWD exists, it is updated
+		setenv("PWD", getcwd(s, 200), 1);
 		return 1;
 	}
 	else {
@@ -465,7 +479,7 @@ void echo(tokenlist *tokens){
 				}
 			}
 			else{
-				printf("%s ", next); //echo without $ just echos the user 
+				printf("%s ", next); //echo without $ just echos the user
 			}
 			i++; //go to next word to echo 
 		}
@@ -477,7 +491,7 @@ bool doOutRedirection(tokenlist *tokens, char *out_file){
 	// Output redirection	
 	close(STDOUT_FILENO); // Closes the file descriptor
 
-	if(open(out_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0600) == -1){ // Open output file
+	if(open(out_file, O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0600) == -1){
 		return false;
 	}
 
@@ -494,20 +508,13 @@ bool doInRedirection(tokenlist *tokens, char *in_file){
 
 	return true;
 
-	/* 
-	sort < alphabet.txt > output.txt - THIS WORKS
-	The result from this command is that alphabet.txt remains unchanged but output.txt now has the sorted contents of alphabet.txt
-
-	sort > alphabet.txt < output.txt - THIS WORKS
-	The result from this command is that output.txt remains unchanged but alphabet.txt now has the contents of output.txt
-	*/
-
 }
 /*
 return 0 is not valid
 return 1 is valid
 */
-int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, char *out_file, char *in_file, bool foundPipe){
+int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, 
+					char *out_file, char *in_file, bool foundPipe){
 	tokens->items[0] = pathSearch(tokens->items[0]);
 	//pass above into execv
 	int status;
@@ -527,19 +534,16 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, c
 				exit(1);
 			}
 		}
-		// if(foundPipe){
-		// 	if(!doPipe(tokens, tokens->items[loc])){
 
-		// 	}
-		// }
 		//if execv is successful, it terminates child
 		if (execv(tokens->items[0], tokens->items) == -1) { 
 			perror("execv");
 			exit(1);
 		}
 	} else if (pid > 0) { //if parent thread
-		waitpid(pid, &status, 0); //This NULL needs to change because it gets the if child successfully executed execv 
-		//do something with status here and return 0 or 1 if child successfully executed execv
+		waitpid(pid, &status, 0); 
+		//do something with status here 
+		//and return 0 or 1 if child successfully executed execv
 		//if status tell us child ran successfully, return 1, else return 0
 		//if child was good
 		return true;
@@ -701,11 +705,13 @@ void tilde(tokenlist *tokens){
 //         if(backgroundsJobs[i].status == 0)
 //         {
 //             int stat;
-//             pid_t result = waitpid(backgroundsJobs[i].pid, &stat, WNOHANG);     //indicates that the parent process shouldn't wait
+// 				//indicates that the parent process shouldn't wait
+//             pid_t result = waitpid(backgroundsJobs[i].pid, &stat, WNOHANG);     
 //             if(result == backgroundsJobs[i].pid)
 //             {
 //                 backgroundsJobs[i].status = 1;
-//                 printf("[%d] done %s\n", backgroundsJobs[i].numJobs, backgroundsJobs[i].cmdLine);
+//                 printf("[%d] done %s\n", backgroundsJobs[i].numJobs, 
+// 					backgroundsJobs[i].cmdLine);
 //             }
             
 //         }
