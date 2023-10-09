@@ -630,6 +630,20 @@ void tilde(tokenlist *tokens){
 	}
 }
 
+// void background(){
+// 	int status;
+// 	pid_t pid = fork();
+
+// 	if(pid == 0) {
+// 		sleep(3);
+// 		printf("Child process\n");
+// 	}
+// 	else {
+// 		waitpid(pid, &status, WNOHANG);
+// 		printf("Parent process\n");
+// 	}
+// }
+
 // typedef struct {
 //     // int numJobs = 0;
 //     pid_t pid;
