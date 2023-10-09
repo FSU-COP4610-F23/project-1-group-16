@@ -407,7 +407,7 @@ void singlePipe(tokenlist *tokens, int loc1, int loc2){
 }
 
 void addCommandToValid(commandHistory *history, char *command){
-	if(history->count<3){
+	if(history->count < 3){
 		strcpy(history->commands[history->count], command);
 		history->count++;
 	}
@@ -421,8 +421,14 @@ void addCommandToValid(commandHistory *history, char *command){
 
 void displayLastThree(commandHistory *history){
 	// int start = (history->count > 3) ? history->count - 3 : 0;
+	printf("Last (3) valid commands:\n");
 	for(int i = 0; i < history->count; i++){
-		printf("Command %d: %s\n", i + 1, history->commands[i]);
+		printf("[%d]: %s\n", i + 1, history->commands[i]);
+	}
+
+	if(history->count == 0)
+	{
+		printf("There are no valid commands.\n");
 	}
 }
 
@@ -542,6 +548,11 @@ int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection,
 		}
 	} else if (pid > 0) { //if parent thread
 		waitpid(pid, &status, 0); 
+		if (WIFEXITED(status)) {
+            return !WEXITSTATUS(status);
+        } else {
+            return false; // Child process did not exit normally
+        }
 		//do something with status here 
 		//and return 0 or 1 if child successfully executed execv
 		//if status tell us child ran successfully, return 1, else return 0
