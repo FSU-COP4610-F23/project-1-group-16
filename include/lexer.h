@@ -3,6 +3,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+
+typedef struct {
+    char* cmd;
+    int pid1;
+    bool isValid;
+} backProcess;
+
 typedef struct {
     char ** items;
     size_t size;
@@ -25,10 +32,14 @@ void echo(tokenlist *tokens);
 int handleExternal(tokenlist *tokens, bool inRedirection, bool outRedirection, 
         char *out_file, char *in_file, bool foundPipe);
 int cd(tokenlist *tokens);
+void jobs(tokenlist *tokens);
 void addCommandToValid(commandHistory *history, char *command);
 void displayLastThree(commandHistory *history);
 bool doOutRedirection(tokenlist *tokens, char *out_file);
 bool doInRedirection(tokenlist *tokens, char *in_file);
 bool singlePipe(tokenlist *tokens, int loc1, int loc2);
 bool doublePipe(tokenlist *tokens, int loc1, int loc2);
-bool backgroundProcessing(tokenlist *tokens, int backgroundStatus[], int backgroundPids[]);
+bool backgroundProcessing(tokenlist *tokens);
+bool checkBackground();
+int findEmpty();
+

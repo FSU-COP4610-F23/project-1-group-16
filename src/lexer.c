@@ -21,6 +21,9 @@ Readme
 #include <fcntl.h>
 #include <sys/stat.h>
 
+backProcess backP[10];
+int job_number;
+
 int main()
 {
 	commandHistory history;
@@ -30,43 +33,27 @@ int main()
 	char *out_file;
 	char *in_file;
 	bool foundPipe;
-	bool foundBackProcess;
-	int job_number = 0;
+	job_number = 1;
 	int backgroundStatus[10] = {0,0,0,0,0,0,0,0,0,0};
 	int backgroundPids[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+	for(int i = 0; i < 10; i++) {
+		backP[i].isValid = false;
+	}
 
 	while (1) {
 		bool executed = false;
 		inRedirection = false; 
 		outRedirection = false; 
 		foundPipe = false;
-		foundBackProcess = false;
 		
 		printf("%s@%s:%s>", getenv("USER"), getenv("MACHINE"), getenv("PWD"));
 
-		/* input contains the whole command
-		 * tokens contains substrings from input split by spaces
-		 */
-
 		char *input = get_input();
-		// printf("whole input: %s\n", input); //will be deleted later
 
 		tokenlist *tokens = get_tokens(input);
-
-		//see if any back pids are done
-		//if yes print them and open that slot
-		for(int i = 0; i < 10; i++){
-			if (WIFEXITED(backgroundStatus[i])) {
-            	if(WEXITSTATUS(backgroundStatus[i]) == 0){
-					printf("[%d] [%d] done\n", i+1, backgroundPids[i]);
-				}
-       		} 
-		}
+		checkBackground();
 		
-		// for (int i = 0; i < tokens->size; i++) {
-		// 	//this line is for testing and should be deleted later
-		// 	printf("token %d: (%s)\n", i, tokens->items[i]); 
-		// }
 
 		tilde(tokens); //tilde expansion
 		
@@ -78,12 +65,12 @@ int main()
 
 		// Background Processing
 		if(strcmp(tokens->items[tokens->size-1], "&") == 0){
-			job_number++;
-			if(backgroundProcessing(tokens, &backgroundStatus, &backgroundPids)){
-				foundBackProcess = true;
+			if(backgroundProcessing(tokens)){
+				int i;
+				backP[i].isValid = true;
 			}
 		}
-		if(!foundBackProcess){
+		if(!backP[10].isValid){
 			int pipeLoc1 = -1;
 			int pipeLoc2 = -1;
 			for(int i = 0; i < tokens->size; i++){
@@ -98,7 +85,7 @@ int main()
 			}
 
 			// This is where we handle piping in main
-			// for(int i = 0; i < tokens->size; i++){
+		
 			if(pipeLoc1 != -1){
 				//found pipe
 				//cause fork where child handles piping and parent waits for child
@@ -165,71 +152,56 @@ int main()
 	return 0;
 } // END OF MAIN
 
-bool backgroundProcessing(tokenlist *tokens, int backgroundStatus[], int backgroundPids[]){
+int findEmpty(){
+	for (int i=0; i< 10; i++)
+	{
+		if(!backP[i].isValid)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+bool backgroundProcessing(tokenlist *tokens){
 	pid_t pid1 = fork();
 	if(pid1 == 0){
-		int status;
-		tokens->items[tokens->size-1] = NULL; // NULL out the &
-		
-		pid_t pid2 = fork();
-
-		if(pid2 == 0) {
-			int job_number = -1;
-			for(int i = 0; i < 10; i++){
-				if(backgroundStatus[i] == 0){
-					backgroundStatus[status];
-					backgroundPids[pid2];
-					job_number = i;
-					break; //break out of for loop
-				}
-			}
-			if(job_number == -1){
-				printf("Too many jobs running in background\n");
-				exit(1);
-			}
-
-			tokenlist * cmd = new_tokenlist();
-			for(int i = 0; i < tokens->size - 1; i++){
-				cmd->items = 
-					(char **)realloc(cmd->items, (i + 2) * sizeof(char*));
-				cmd->items[i] = (char *)malloc(strlen(tokens->items[i]) + 1);
-				cmd->items[i + 1] = NULL;
-				strcpy(cmd->items[i], tokens->items[i]);
-				cmd->size ++;
-			}
-			tokens->items = (char **)realloc(tokens->items, (tokens->size+1) * sizeof(char*));
-			tokens->items[tokens->size-1] = NULL;
-			tokens->size--;
-		
-			// execv(cmd->items[0], cmd->items);
-			printf("[%d] [%d]\n", job_number+1, getpid());
-			return false;
-			
+		int arg = tokens->size-1;
+		if(arg >= 0 && strcmp(tokens->items[arg], "&") == 0)
+		{
+			tokens->items[arg] = NULL;
 		}
-		else if(pid2 > 0){
-			waitpid(pid2, &status, WNOHANG);
-			// printf("[%d] [%d] done ", job_number, getpid());
-			// for (int i = 0; i < tokens->size; i++) {
-			// 	//this line is for testing and should be deleted later
-			// 	printf("%s ", tokens->items[i]); 
-			// }
-			printf("\n");
-			return true;
-		}
-		else{
-			perror("fork");
-			exit(1);
-		}
-	}
-	else if(pid1 > 0){
-		//nothing
-		return true;
+		char* cmd = tokens->items[0];
+		execv(cmd, tokens->items);
 	}
 	else{
-		perror("fork");
-		exit(1);
+		int status;
+		printf("[%d] %d\n", job_number, pid1);
+		int index = findEmpty();
+		backP[index].pid1 = pid1;
+		backP[index].isValid = true;
+		backP[index].cmd = strdup(tokens->items[0]);
+		job_number++;
+		return true;
+	}
+
+}
+
+bool checkBackground()
+{
+	for(int i = 0; i < 10; i++) {
+		if (backP[i].isValid)
+		{
+			int status;
+			waitpid(backP[i].pid1, &status, WNOHANG);
+			if(WIFEXITED(status) == 0) {
+				backP[i].isValid = false;
+				printf("[%d] + %d done\n", job_number-1, backP[i].pid1);
+			}
+		}
 	}
 }
+
 
 bool doublePipe(tokenlist *tokens, int loc1, int loc2){
 
@@ -489,13 +461,12 @@ int isInternal(tokenlist *tokens){
 	}
 	else if(strcmp(tokens->items[0], "cd") == 0){
 		return cd(tokens);
-		// return 1;
 	}
 	else if(strcmp(tokens->items[0], "exit") == 0){
 		return 3;
 	}
 	else if(strcmp(tokens->items[0], "jobs") == 0){
-		//jobs();
+		jobs(tokens);
 		return 1;
 	}
 	return 0;
@@ -510,6 +481,30 @@ int cd(tokenlist *tokens){
 	else {
 		printf("errno");
 		return 2;
+	}
+}
+
+void jobs(tokenlist *tokens)
+{
+	int activeJobs = 0;
+	for(int i=0; i<10; i++)
+	{
+		if(backP[i].isValid)
+		{
+			int status;
+			pid_t result = waitpid(backP[i].pid1, &status, WNOHANG);
+			if(result == backP[i].pid1) {
+				backP[i].isValid = false;
+				printf("[%d] + %d done\n", i+1, backP[i].pid1, backP[i].cmd);
+			}
+			else{
+				printf("[%d] + %d running\n", i+1, backP[i].pid1, backP[i].cmd);
+				activeJobs++;
+			}
+		}
+	}
+	if(activeJobs == 0){
+		printf("No active background processes\n");
 	}
 }
 
@@ -711,63 +706,3 @@ void tilde(tokenlist *tokens){
 	}
 }
 
-// void background(tokenlist *tokens){
-// 	int status;
-// 	pid_t pid = fork();
-
-// 	if(pid == 0) {
-// 		sleep(3);
-// 	}
-// 	else {
-// 		waitpid(pid, &status, WNOHANG);
-// 	}
-// }
-
-// typedef struct {
-//     // int numJobs = 0;
-//     pid_t pid;
-//     // char cmdLine[100];
-// 	tokenlist tokens;
-//     int status = 0;     //0 is not running, 1 is running
-// } Job;
-
-// Job backgroundsJobs[10];
-
-// void addJob(pid_t pid, const char* cmdLine)
-// {
-//     for(int i=0; i<sizeof(backgroundsJobs); i++)
-//     {
-//         if(backgroundsJobs[i].status == 0) //found open job space
-//         {
-//             Job j = backgroundsJobs[i];
-//             // j.pid = pid;
-//             strcpy(j.cmdLine, cmdLine);
-//             j.status = 1;
-//             // backgroundsJobs[j.numJobs - 1]= j;
-//         }
-//         else
-//         {
-//             printf("Maximum number of background jobs reached.\n");
-//         }
-//     }
-// }
-
-// void checkJobs()
-// {
-//     for(int i = 0; i<10; i++)
-//     {
-//         if(backgroundsJobs[i].status == 0)
-//         {
-//             int stat;
-// 				//indicates that the parent process shouldn't wait
-//             pid_t result = waitpid(backgroundsJobs[i].pid, &stat, WNOHANG);     
-//             if(result == backgroundsJobs[i].pid)
-//             {
-//                 backgroundsJobs[i].status = 1;
-//                 printf("[%d] done %s\n", backgroundsJobs[i].numJobs, 
-// 					backgroundsJobs[i].cmdLine);
-//             }
-            
-//         }
-//     }
-// }

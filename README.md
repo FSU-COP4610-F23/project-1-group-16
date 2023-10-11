@@ -1,7 +1,7 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/wtw9xmrw)
 # Shell
 
-[Description]
+This project is a comprehensive user-friendly shell interface that enhances process control, user interaction, and error handling mechanisms. Works with external and internal commands, background processing, and I/O redirection. 
 
 ## Group Members
 - **Rebecca Anestad**: rba20a@fsu.edu
@@ -87,12 +87,15 @@ make run
 This will run the program
 
 ## Bugs
-- **Bug 1**: This is bug 1.
+- **Bug 1**: N/A
 
 ## Extra Credit
 - **Extra Credit 1**: [Shell-ception]
-- **Extra Credit 2**: [Extra Credit Option]
+- **Extra Credit 2**: [Supports piping and I/O redirection in single command]
 - **Extra Credit 3**: [Extra Credit Option]
 
 ## Considerations
-[Description]
+-prints "/bin/sleep: invalid time interval ‘&’ Try '/bin/sleep --help' for more information." when we do the sleep 3 & command however it still works
+-active background processes switch from running to done after one command
+-potential memory leaks 
+-Olivia is submitting two days after due date because of granted extension with doctor's note
